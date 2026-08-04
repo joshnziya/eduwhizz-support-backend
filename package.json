@@ -1,0 +1,21 @@
+{
+  "name": "eduwhizz-support-backend",
+  "version": "1.0.0",
+  "description": "REST API + SQLite database backing the EduWhizz SaaS Support Desk (School ERP, Rent Management, Pharmacy Management)",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1"
+  }
+}

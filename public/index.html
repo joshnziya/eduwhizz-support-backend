@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EduWhizz SaaS Support Desk</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --bg:#F2F6F7; --surface:#FFFFFF; --ink:#0F2733; --ink-soft:#4C6672; --ink-faint:#8CA2A9; --line:#DCE6E9;
+    --brand:#124D66; --brand-dark:#0B3444; --brand-wash:#E4EEF1;
+    --accent:#2297AA; --accent-wash:#E3F3F5;
+    --critical:#F04E46; --critical-wash:#FDE7E5;
+    --high:#C9862B; --high-wash:#F8EEDC;
+    --normal:#124D66; --normal-wash:#E4EEF1;
+    --low:#6B7A80; --low-wash:#ECEFF0;
+    --ok:#2E8B57; --ok-wash:#E4F3EA;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;height:100%;}
+  .disp{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .hidden{display:none !important;}
+  button{font-family:'Inter',sans-serif;}
+  ::-webkit-scrollbar{width:9px;} ::-webkit-scrollbar-thumb{background:#c9ccd3;border-radius:6px;}
+
+  #header{display:flex;align-items:center;justify-content:space-between;padding:13px 26px;background:var(--brand-dark);color:#fff;}
+  .brand{display:flex;align-items:center;gap:11px;cursor:pointer;}
+  .brand-mark{width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex:none;}
+  .brand-text .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;}
+  .brand-text .sub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.5px;text-transform:uppercase;margin-top:-1px;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .role-pill{font-size:11.5px;font-weight:600;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);display:flex;align-items:center;gap:6px;}
+  .role-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  .switch-link{font-size:12px;color:rgba(255,255,255,.65);cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;}
+  .switch-link:hover{color:#fff;}
+
+  #landing{display:flex;flex-direction:column;align-items:center;padding:64px 20px 40px;min-height:calc(100vh - 62px);}
+  #landing .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:10px;}
+  #landing h1{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700;margin:0 0 10px;text-align:center;}
+  #landing p.lede{color:var(--ink-soft);font-size:14.5px;max-width:460px;text-align:center;margin:0 0 40px;line-height:1.55;}
+  .role-cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;max-width:780px;}
+  .role-card{width:330px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .1s;}
+  .role-card:hover{box-shadow:0 10px 28px rgba(20,30,50,.1);border-color:var(--accent);transform:translateY(-2px);}
+  .role-card .icon{width:42px;height:42px;border-radius:10px;background:var(--brand-wash);display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+  .role-card h3{font-family:'Space Grotesk',sans-serif;font-size:18px;margin:0 0 8px;}
+  .role-card p{font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;}
+  .role-card .cta{font-size:12.5px;font-weight:700;color:var(--brand);}
+  #landing .foot-note{margin-top:40px;font-size:11.5px;color:var(--ink-faint);max-width:440px;text-align:center;line-height:1.5;}
+
+  .btn{border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;padding:9px 16px;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--brand);color:#fff;} .btn-primary:hover{filter:brightness(1.15);}
+  .btn-accent{background:var(--accent);color:#fff;} .btn-accent:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);} .btn-ghost:hover{background:var(--bg);}
+  .btn-sm{padding:5px 10px;font-size:11.5px;border-radius:6px;}
+  select,input,textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-family:'Inter',sans-serif;font-size:13px;background:var(--bg);color:var(--ink);}
+  textarea{resize:vertical;min-height:80px;}
+  select:focus,input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:-1px;background:#fff;}
+  label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);margin-bottom:5px;font-weight:700;}
+  .field{margin-bottom:14px;} .field-row{display:flex;gap:12px;} .field-row .field{flex:1;}
+  .hint{font-size:11.5px;color:var(--ink-faint);margin-top:5px;line-height:1.45;}
+  .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;white-space:nowrap;}
+
+  /* Customer view */
+  #customerView{max-width:840px;margin:0 auto;padding:30px 24px 70px;}
+  .tabs{display:flex;gap:0;margin-bottom:22px;border-bottom:1px solid var(--line);}
+  .tab-btn{background:none;border:none;padding:10px 4px;margin-right:22px;font-size:14px;font-weight:600;color:var(--ink-faint);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab-btn.on{color:var(--brand);border-bottom-color:var(--brand);}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 4px;}
+  .panel .subhead{font-size:13px;color:var(--ink-soft);margin-bottom:20px;}
+  .lookup-row{display:flex;gap:10px;margin-bottom:20px;} .lookup-row input{flex:1;}
+  .c-stub{border:1px solid var(--line);border-radius:10px;padding:15px 17px;margin-bottom:9px;cursor:pointer;}
+  .c-stub:hover{box-shadow:0 3px 14px rgba(20,30,50,.08);border-color:var(--accent);}
+  .c-stub-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .c-stub-id{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);}
+  .c-stub-subject{font-weight:600;font-size:13.5px;margin-top:3px;}
+  .c-stub-meta{font-size:11.5px;color:var(--ink-soft);margin-top:5px;}
+
+  /* Staff console */
+  #staffView{display:flex;height:calc(100vh - 62px);overflow:hidden;}
+  .sidebar{width:214px;flex:none;background:var(--brand-dark);color:#fff;padding:18px 14px;overflow-y:auto;}
+  .nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.4);margin:14px 6px 6px;}
+  .nav-label:first-child{margin-top:0;}
+  .nav-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:12.8px;color:rgba(255,255,255,.82);margin-bottom:1px;}
+  .nav-item:hover{background:rgba(255,255,255,.06);}
+  .nav-item.active{background:rgba(255,255,255,.14);color:#fff;font-weight:600;}
+  .nav-count{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:rgba(255,255,255,.5);}
+  .nav-item.active .nav-count{color:rgba(255,255,255,.85);}
+  .view-nav .nav-item{font-size:13.5px;padding:9px;}
+  .priority-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:7px;flex:none;}
+
+  .staff-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:14px;}
+  .topbar h1{font-family:'Space Grotesk',sans-serif;font-size:18px;margin:0;flex:none;}
+  .search{flex:1;max-width:320px;position:relative;} .search input{padding-left:32px;}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.45;}
+  .viewing-as{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);}
+  .viewing-as select{width:auto;padding:6px 8px;font-size:12px;}
+
+  .content-scroll{flex:1;overflow-y:auto;padding:18px 24px 60px;}
+  .list-header{display:grid;grid-template-columns:110px 1fr 150px 100px 130px 110px 90px;gap:12px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-faint);padding:0 16px 8px;}
+  .stub{display:grid;grid-template-columns:110px 1fr 150px 100px 130px 110px 90px;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;margin-bottom:8px;cursor:pointer;position:relative;}
+  .stub:hover{box-shadow:0 3px 14px rgba(20,30,50,.08);border-color:var(--accent);}
+  .stub::before{content:'';position:absolute;left:96px;top:8px;bottom:8px;border-left:1.5px dashed var(--line);}
+  .stub-notch{position:absolute;left:91px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:1px solid var(--line);}
+  .stub-notch.top{top:-6px;} .stub-notch.bot{bottom:-6px;}
+  .stub-id{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11.5px;}
+  .stub-id-sub{font-size:9.5px;color:var(--ink-faint);margin-top:2px;}
+  .stub-subject{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stub-requester{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .stub-assignee{font-size:12px;color:var(--ink-soft);}
+  .stub-time{font-size:11px;color:var(--ink-faint);text-align:right;}
+  .origin-flag{font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--accent-wash);color:var(--accent);margin-left:6px;}
+
+  .empty{text-align:center;padding:70px 20px;color:var(--ink-faint);}
+  .empty h3{font-family:'Space Grotesk',sans-serif;color:var(--ink-soft);margin:8px 0 4px;}
+
+  /* Systems view */
+  .sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:26px;}
+  .sys-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .sys-card-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .sys-card h4{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0;}
+  .status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .sys-uptime{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;margin:10px 0 2px;}
+  .sys-uptime-label{font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.4px;}
+  .sys-status-select{margin-top:12px;}
+  .section-title{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 12px;}
+  .inc-row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:8px;}
+  .inc-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+  .inc-title{font-weight:600;font-size:13.5px;}
+  .inc-meta{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .inc-desc{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+
+  /* Reports view */
+  .report-toggle{display:flex;gap:8px;margin-bottom:18px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px;}
+  .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .stat-num{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;}
+  .stat-label{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;}
+  .breakdown{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+  .breakdown h5{font-family:'Space Grotesk',sans-serif;font-size:13.5px;margin:0 0 10px;}
+  .bar-row{display:flex;align-items:center;gap:10px;font-size:12.5px;margin-bottom:7px;}
+  .bar-label{width:130px;flex:none;color:var(--ink-soft);}
+  .bar-track{flex:1;height:8px;background:var(--bg);border-radius:5px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--brand);border-radius:5px;}
+  .bar-val{width:34px;flex:none;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);}
+
+  /* KB view */
+  .kb-entry{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:10px;}
+  .kb-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+  .kb-subject{font-weight:600;font-size:13.5px;}
+  .kb-meta{font-size:11px;color:var(--ink-faint);margin-top:3px;}
+  .kb-body{font-size:12.8px;color:var(--ink-soft);line-height:1.55;margin-top:10px;white-space:pre-wrap;}
+
+  /* Drawer / Modal shared */
+  .overlay{position:fixed;inset:0;background:rgba(15,20,32,.45);display:none;align-items:stretch;justify-content:flex-end;z-index:50;}
+  .overlay.show{display:flex;}
+  .drawer{width:590px;max-width:92vw;background:var(--surface);height:100%;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.15);animation:slidein .18s ease-out;}
+  @keyframes slidein{from{transform:translateX(24px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+  .drawer-head{padding:20px 24px;border-bottom:1px solid var(--line);}
+  .drawer-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .drawer-close{background:none;border:none;font-size:20px;color:var(--ink-faint);cursor:pointer;line-height:1;padding:2px 6px;}
+  .drawer-close:hover{color:var(--ink);}
+  .drawer-body{flex:1;overflow-y:auto;padding:18px 24px;}
+  .desc-block{background:var(--bg);border-radius:8px;padding:14px;font-size:13.3px;line-height:1.55;white-space:pre-wrap;margin-bottom:16px;}
+  .section-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);font-weight:700;margin-bottom:10px;}
+  .sla-row{display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap;}
+  .thread-item{border-left:2px solid var(--line);padding:2px 0 14px 16px;margin-left:2px;position:relative;}
+  .thread-item::before{content:'';position:absolute;left:-5px;top:3px;width:8px;height:8px;border-radius:50%;background:var(--brand);}
+  .thread-item.note::before{background:var(--high);}
+  .thread-item.note{border-left-color:var(--high-wash);}
+  .thread-meta{font-size:11px;color:var(--ink-faint);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+  .thread-meta b{color:var(--ink-soft);}
+  .thread-body{font-size:13.3px;line-height:1.5;}
+  .note-flag{background:var(--high-wash);color:var(--high);font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:4px;}
+  .kb-flag{background:var(--accent-wash);color:var(--accent);font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:4px;}
+  .kb-toggle{background:none;border:1px solid var(--line);border-radius:5px;font-size:10px;padding:1px 6px;cursor:pointer;color:var(--ink-faint);}
+  .kb-toggle:hover{border-color:var(--accent);color:var(--accent);}
+  .reply-box{border-top:1px solid var(--line);padding:14px 24px 18px;}
+  .reply-toggle{display:flex;gap:6px;margin-bottom:10px;}
+  .toggle-btn{border:1px solid var(--line);background:var(--bg);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+  .toggle-btn.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .reply-actions{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,20,32,.45);display:none;align-items:center;justify-content:center;z-index:60;}
+  .modal-overlay.show{display:flex;}
+  .modal{width:560px;max-width:92vw;max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:14px;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .modal h2{font-family:'Space Grotesk',sans-serif;margin:0 0 18px;font-size:18px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+
+  @media (max-width:760px){
+    .role-cards{flex-direction:column;align-items:center;}
+    .role-card{width:100%;max-width:360px;}
+    .list-header{display:none;}
+    .stub{grid-template-columns:1fr;gap:5px;}
+    .stub::before,.stub-notch{display:none;}
+    .sidebar{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="brand" id="brandHome">
+    <div class="brand-mark">
+      <svg width="22" height="20" viewBox="0 0 26 22" fill="none">
+        <rect x="1" y="12" width="6" height="9" rx="1" fill="#2297AA"/>
+        <rect x="10" y="6" width="6" height="15" rx="1" fill="#F04E46"/>
+        <rect x="19" y="0" width="6" height="21" rx="1" fill="#FFFFFF"/>
+      </svg>
+    </div>
+    <div class="brand-text"><div class="name">EduWhizz</div><div class="sub">SaaS Support Desk &middot; ERP &middot; Rent &middot; Pharmacy</div></div>
+  </div>
+  <div class="header-right">
+    <div class="role-pill hidden" id="rolePill"><span class="dot"></span><span id="rolePillText"></span></div>
+    <button class="switch-link hidden" id="switchViewBtn">Switch view</button>
+    <button class="switch-link hidden" id="logoutBtn">Log out</button>
+  </div>
+</div>
+
+<!-- LANDING -->
+<div id="landing">
+  <div class="kicker">Welcome</div>
+  <h1>Report an issue, or manage the queue</h1>
+  <p class="lede">One shared desk across School ERP, Rent Management and Pharmacy Management &mdash; end users report issues here, and the support team tracks, assigns and resolves them against SLA.</p>
+  <div class="role-cards">
+    <div class="role-card" id="goCustomer">
+      <div class="icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#34406E" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg></div>
+      <h3>Report an issue</h3>
+      <p>For managers, directors, CRM users, teachers, guardians, tenants, landlords and pharmacy staff.</p>
+      <div class="cta">Continue &rarr;</div>
+    </div>
+    <div class="role-card" id="goStaff">
+      <div class="icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#34406E" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/></svg></div>
+      <h3>Support console</h3>
+      <p>Queue, SLA tracking, system status &amp; incidents, daily/weekly reports, and the knowledge base. Staff login required.</p>
+      <div class="cta">Continue &rarr;</div>
+    </div>
+  </div>
+  <div class="foot-note">Staff accounts are created by an admin. If you don't have a login yet, ask your admin to create one for you.</div>
+</div>
+
+<!-- STAFF LOGIN -->
+<div id="loginScreen" class="hidden">
+  <div class="panel" style="max-width:380px;margin:70px auto;">
+    <h2>Staff sign in</h2>
+    <div class="subhead">Use the account your admin created for you.</div>
+    <div id="loginMsg"></div>
+    <div class="field"><label>Username</label><input id="loginUsername" placeholder="joshua"></div>
+    <div class="field" style="margin-bottom:18px;"><label>Password</label><input id="loginPassword" type="password"></div>
+    <button class="btn btn-primary" id="loginSubmitBtn" style="width:100%;">Sign in</button>
+    <div style="text-align:center;margin-top:14px;"><button class="switch-link" id="backToLandingBtn" style="color:var(--ink-faint);">&larr; Back</button></div>
+  </div>
+</div>
+
+<!-- CUSTOMER VIEW -->
+<div id="customerView" class="hidden">
+  <div class="tabs">
+    <button class="tab-btn on" id="tabSubmit">Submit a request</button>
+    <button class="tab-btn" id="tabTrack">My requests</button>
+  </div>
+
+  <div id="submitPanel" class="panel">
+    <h2>Tell us what's going on</h2>
+    <div class="subhead">We'll route this to the right team and keep you updated by email.</div>
+    <div class="field-row">
+      <div class="field"><label>Your name</label><input id="c_requester" placeholder="e.g. Grace Mwangi"></div>
+      <div class="field"><label>Email</label><input id="c_email" placeholder="you@email.com"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Which system?</label><select id="c_system"></select></div>
+      <div class="field"><label>Which part of it?</label><select id="c_module"></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>What kind of issue?</label><select id="c_category"></select></div>
+      <div class="field">
+        <label>How urgent is this?</label>
+        <select id="c_impact">
+          <option value="critical">System is down / unusable</option>
+          <option value="high">Major problem, but I have a workaround</option>
+          <option value="normal" selected>Minor issue</option>
+          <option value="low">Just a question or small request</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Subject</label><input id="c_subject" placeholder="e.g. Cannot submit attendance in Teachers App"></div>
+    <div class="field" style="margin-bottom:6px;"><label>Details</label><textarea id="c_description" placeholder="What happened, when, and any error message you saw."></textarea></div>
+    <div style="display:flex;justify-content:flex-end;"><button class="btn btn-primary" id="submitCustomerTicket">Submit request</button></div>
+  </div>
+
+  <div id="trackPanel" class="panel hidden">
+    <h2>Find your requests</h2>
+    <div class="subhead">Enter the email you used when submitting.</div>
+    <div class="lookup-row"><input id="lookupEmail" placeholder="you@email.com"><button class="btn btn-primary" id="lookupBtn">Find requests</button></div>
+    <div id="lookupResults"></div>
+  </div>
+</div>
+
+<!-- STAFF VIEW -->
+<div id="staffView" class="hidden">
+  <div class="sidebar">
+    <div class="nav-label">View</div>
+    <div class="view-nav" id="viewNav"></div>
+    <div id="queueFilters"></div>
+  </div>
+  <div class="staff-main">
+    <div class="topbar" id="staffTopbar"></div>
+    <div class="content-scroll" id="staffContent"></div>
+  </div>
+</div>
+
+<!-- Shared detail drawer -->
+<div class="overlay" id="drawerOverlay"><div class="drawer" id="drawerPanel"></div></div>
+
+<!-- Staff: log request modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Log a request</h2>
+    <div class="field"><label>Subject</label><input id="f_subject" placeholder="e.g. Director console showing stale data"></div>
+    <div class="field-row">
+      <div class="field"><label>Reporter name</label><input id="f_requester" placeholder="Reported by"></div>
+      <div class="field"><label>Reporter email</label><input id="f_email" placeholder="email (optional)"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>System</label><select id="f_system"></select></div>
+      <div class="field"><label>Module</label><select id="f_module"></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Category</label><select id="f_category"></select></div>
+      <div class="field"><label>Priority</label><select id="f_priority">
+        <option value="critical">Critical</option><option value="high">High</option><option value="normal" selected>Normal</option><option value="low">Low</option>
+      </select></div>
+    </div>
+    <div class="field" style="margin-bottom:6px;"><label>Details</label><textarea id="f_description" placeholder="What was reported, and through which channel?"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="cancelModalBtn">Cancel</button><button class="btn btn-primary" id="submitModalBtn">Create ticket</button></div>
+  </div>
+</div>
+
+<!-- Staff: log incident modal -->
+<div class="modal-overlay" id="incModalOverlay">
+  <div class="modal">
+    <h2>Log an incident</h2>
+    <div class="field"><label>Title</label><input id="i_title" placeholder="e.g. Payments Module timing out"></div>
+    <div class="field-row">
+      <div class="field"><label>System</label><select id="i_system"></select></div>
+      <div class="field"><label>Module (optional)</label><select id="i_module"></select></div>
+    </div>
+    <div class="field"><label>Severity</label>
+      <select id="i_severity"><option value="Investigating">Investigating</option><option value="Degraded">Degraded performance</option><option value="Down">Full outage</option></select>
+    </div>
+    <div class="field" style="margin-bottom:6px;"><label>Description</label><textarea id="i_description" placeholder="What's affected and what you know so far."></textarea></div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="cancelIncBtn">Cancel</button><button class="btn btn-primary" id="submitIncBtn">Log incident</button></div>
+  </div>
+</div>
+
+<script>
+const API = ''; // same-origin: this page is served by the backend itself
+
+const SYSTEMS = {
+  'School ERP': ['Manager Console', 'CRM Console', 'Director Console', 'Teachers App', 'Guardian App'],
+  'Rent Management': ['Admin Console', 'Landlord Portal', 'Tenant Portal', 'Payments Module'],
+  'Pharmacy Management': ['Admin Console', 'Inventory & Stock', 'POS / Sales', 'Prescription Desk']
+};
+const SYSTEM_NAMES = Object.keys(SYSTEMS);
+const CATEGORIES = ['Bug','Access Request','Performance','Data Issue','Feature Request','Outage'];
+
+const PRIORITIES = [
+  {key:'critical', label:'Critical', color:'var(--critical)', wash:'var(--critical-wash)'},
+  {key:'high', label:'High', color:'var(--high)', wash:'var(--high-wash)'},
+  {key:'normal', label:'Normal', color:'var(--normal)', wash:'var(--normal-wash)'},
+  {key:'low', label:'Low', color:'var(--low)', wash:'var(--low-wash)'},
+];
+function priorityMeta(k){ return PRIORITIES.find(p=>p.key===k) || PRIORITIES[2]; }
+
+const STATUSES = [
+  {key:'open', label:'Open', customerLabel:'Received'},
+  {key:'assigned', label:'Assigned', customerLabel:'Assigned'},
+  {key:'in_progress', label:'In progress', customerLabel:'In progress'},
+  {key:'escalated', label:'Escalated', customerLabel:'In progress'},
+  {key:'resolved', label:'Resolved', customerLabel:'Resolved'},
+  {key:'closed', label:'Closed', customerLabel:'Closed'},
+];
+function statusMeta(k){ return STATUSES.find(s=>s.key===k) || STATUSES[0]; }
+
+function slaLabel(s){ return {met:'SLA met', breached:'SLA breached', at_risk:'At risk', on_track:'On track'}[s] || s; }
+function slaColor(s){ return {met:'var(--ok)', breached:'var(--critical)', at_risk:'var(--high)', on_track:'var(--accent)'}[s] || 'var(--ink-soft)'; }
+function slaWash(s){ return {met:'var(--ok-wash)', breached:'var(--critical-wash)', at_risk:'var(--high-wash)', on_track:'var(--accent-wash)'}[s] || 'var(--bg)'; }
+
+let authToken = localStorage.getItem('eduwhizz_token') || null;
+let currentUser = null;
+try { currentUser = JSON.parse(localStorage.getItem('eduwhizz_user') || 'null'); } catch(e) { currentUser = null; }
+
+let tickets = [];
+let systemsState = {};
+let incidents = [];
+let teamList = [];
+
+let currentRole = null;
+let staffMainView = 'queue';
+let viewingAs = 'All';
+let filterSystem='all', filterModule='all', filterAssignee='all', filterPriority='all', filterStatus='all', filterSla='all';
+let searchTerm = '';
+let openTicketId = null, drawerRole = 'staff', replyMode = 'reply';
+let lookedUpEmail = '';
+let reportPeriod = 'daily';
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function timeAgo(ts){
+  const diff = Date.now()-ts, min = Math.floor(diff/60000);
+  if(min<1) return 'just now'; if(min<60) return min+'m ago';
+  const hr = Math.floor(min/60); if(hr<24) return hr+'h ago';
+  const d = Math.floor(hr/24); if(d<30) return d+'d ago';
+  return new Date(ts).toLocaleDateString();
+}
+function fmtDateTime(ts){ return new Date(ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function fmtMinutes(min){
+  if(min < 60) return Math.round(min)+'m';
+  const h = Math.floor(min/60), m = Math.round(min%60);
+  if(h < 24) return h+'h '+m+'m';
+  return Math.floor(h/24)+'d '+ (h%24) +'h';
+}
+
+/* ---------- API layer ---------- */
+async function apiFetch(path, opts={}){
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if(authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  let res;
+  try{
+    res = await fetch(API + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  }catch(e){
+    throw new Error('Could not reach the server. Check your connection and try again.');
+  }
+  if(res.status === 401){
+    sessionExpired();
+    throw new Error('Your session expired. Please sign in again.');
+  }
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+function sessionExpired(){
+  authToken = null; currentUser = null;
+  localStorage.removeItem('eduwhizz_token'); localStorage.removeItem('eduwhizz_user');
+  goLogin('Your session expired. Please sign in again.');
+}
+
+/* ---------- Static selects ---------- */
+function fillSystemSelect(id){ document.getElementById(id).innerHTML = SYSTEM_NAMES.map(s=>`<option value="${s}">${s}</option>`).join(''); }
+function fillModuleSelect(systemSelectId, moduleSelectId){
+  const sys = document.getElementById(systemSelectId).value;
+  document.getElementById(moduleSelectId).innerHTML = (SYSTEMS[sys]||[]).map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+function fillModuleSelectWithAll(systemSelectId, moduleSelectId){
+  const sys = document.getElementById(systemSelectId).value;
+  document.getElementById(moduleSelectId).innerHTML = '<option value="all">All modules</option>' + (SYSTEMS[sys]||[]).map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+function fillCategorySelect(id){ document.getElementById(id).innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join(''); }
+
+fillSystemSelect('c_system'); fillModuleSelect('c_system','c_module'); fillCategorySelect('c_category');
+document.getElementById('c_system').onchange = ()=> fillModuleSelect('c_system','c_module');
+
+fillSystemSelect('f_system'); fillModuleSelect('f_system','f_module'); fillCategorySelect('f_category');
+document.getElementById('f_system').onchange = ()=> fillModuleSelect('f_system','f_module');
+
+fillSystemSelect('i_system'); fillModuleSelectWithAll('i_system','i_module');
+document.getElementById('i_system').onchange = ()=> fillModuleSelectWithAll('i_system','i_module');
+
+/* ---------- Role / screen routing ---------- */
+function hideAll(){
+  ['landing','loginScreen','customerView','staffView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('rolePill').classList.add('hidden');
+  document.getElementById('switchViewBtn').classList.add('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+}
+function goLanding(){ currentRole=null; hideAll(); document.getElementById('landing').classList.remove('hidden'); }
+function goLogin(message){
+  currentRole=null; hideAll();
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginMsg').innerHTML = message ? `<div class="msg err" style="background:var(--critical-wash);color:var(--critical);font-size:12.5px;padding:9px 12px;border-radius:7px;margin-bottom:14px;">${escapeHtml(message)}</div>` : '';
+}
+function goCustomer(){
+  currentRole='customer'; hideAll();
+  document.getElementById('customerView').classList.remove('hidden');
+  document.getElementById('rolePill').classList.remove('hidden');
+  document.getElementById('rolePillText').textContent = 'Reporting an issue';
+  document.getElementById('switchViewBtn').classList.remove('hidden');
+}
+async function goStaff(){
+  if(!authToken || !currentUser){ goLogin(); return; }
+  currentRole='staff'; hideAll();
+  document.getElementById('staffView').classList.remove('hidden');
+  document.getElementById('rolePill').classList.remove('hidden');
+  document.getElementById('rolePillText').textContent = `${currentUser.name} \u00b7 ${currentUser.tier}`;
+  document.getElementById('switchViewBtn').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.remove('hidden');
+  await loadStaffData();
+  renderStaff();
+}
+document.getElementById('brandHome').onclick = goLanding;
+document.getElementById('goCustomer').onclick = goCustomer;
+document.getElementById('goStaff').onclick = ()=> (authToken && currentUser) ? goStaff() : goLogin();
+document.getElementById('backToLandingBtn').onclick = goLanding;
+document.getElementById('switchViewBtn').onclick = ()=>{ if(currentRole==='customer') goStaff(); else goCustomer(); };
+document.getElementById('logoutBtn').onclick = ()=>{
+  authToken=null; currentUser=null;
+  localStorage.removeItem('eduwhizz_token'); localStorage.removeItem('eduwhizz_user');
+  goLanding();
+};
+
+document.getElementById('loginSubmitBtn').onclick = async ()=>{
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!username || !password){ document.getElementById('loginMsg').innerHTML = '<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">Enter your username and password.</div>'; return; }
+  try{
+    const data = await apiFetch('/api/auth/login', { method:'POST', body:{ username, password } });
+    authToken = data.token; currentUser = data.user;
+    localStorage.setItem('eduwhizz_token', authToken);
+    localStorage.setItem('eduwhizz_user', JSON.stringify(currentUser));
+    document.getElementById('loginPassword').value = '';
+    await goStaff();
+  }catch(e){
+    document.getElementById('loginMsg').innerHTML = `<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">${escapeHtml(e.message)}</div>`;
+  }
+};
+document.getElementById('loginPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('loginSubmitBtn').click(); });
+
+/* ---------- Customer view ---------- */
+document.getElementById('tabSubmit').onclick = ()=>{
+  document.getElementById('tabSubmit').classList.add('on'); document.getElementById('tabTrack').classList.remove('on');
+  document.getElementById('submitPanel').classList.remove('hidden'); document.getElementById('trackPanel').classList.add('hidden');
+};
+document.getElementById('tabTrack').onclick = ()=>{
+  document.getElementById('tabTrack').classList.add('on'); document.getElementById('tabSubmit').classList.remove('on');
+  document.getElementById('trackPanel').classList.remove('hidden'); document.getElementById('submitPanel').classList.add('hidden');
+};
+
+async function submitCustomerTicket(){
+  const ids = ['c_subject','c_requester','c_email'];
+  let ok = true;
+  ids.forEach(id=>{ const v = document.getElementById(id).value.trim(); document.getElementById(id).style.borderColor = v?'var(--line)':'var(--critical)'; if(!v) ok=false; });
+  if(!ok) return;
+  const impact = document.getElementById('c_impact').value;
+  const category = document.getElementById('c_category').value;
+  const priority = category==='Outage' && impact==='normal' ? 'high' : impact;
+  const body = {
+    system: document.getElementById('c_system').value, module: document.getElementById('c_module').value,
+    category, subject: document.getElementById('c_subject').value.trim(), requester: document.getElementById('c_requester').value.trim(),
+    requesterEmail: document.getElementById('c_email').value.trim(), priority,
+    description: document.getElementById('c_description').value.trim(),
+  };
+  const btn = document.getElementById('submitCustomerTicket');
+  btn.disabled = true;
+  try{
+    const t = await apiFetch('/api/tickets', { method:'POST', body });
+    ['c_subject','c_description'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('lookupEmail').value = t.requesterEmail;
+    lookedUpEmail = t.requesterEmail.toLowerCase();
+    document.getElementById('tabTrack').click();
+    await renderLookup();
+  }catch(e){
+    alert(e.message);
+  }finally{ btn.disabled = false; }
+}
+document.getElementById('submitCustomerTicket').onclick = submitCustomerTicket;
+document.getElementById('lookupBtn').onclick = ()=>{ lookedUpEmail = document.getElementById('lookupEmail').value.trim().toLowerCase(); renderLookup(); };
+
+async function renderLookup(){
+  const box = document.getElementById('lookupResults');
+  if(!lookedUpEmail){ box.innerHTML=''; return; }
+  box.innerHTML = '<div class="empty">Loading&hellip;</div>';
+  try{
+    const data = await apiFetch('/api/tickets/lookup?email=' + encodeURIComponent(lookedUpEmail));
+    const mine = data.tickets;
+    if(mine.length===0){ box.innerHTML = `<div class="empty"><h3>No requests found</h3><div>Nothing under that email yet.</div></div>`; return; }
+    box.innerHTML = mine.map(t=>{
+      const sm = statusMeta(t.status);
+      return `<div class="c-stub" data-id="${t.id}">
+        <div class="c-stub-top">
+          <div><div class="c-stub-id mono">${t.id}</div><div class="c-stub-subject">${escapeHtml(t.subject)}</div></div>
+          <span class="tag" style="background:var(--brand-wash);color:var(--brand)">${sm.customerLabel}</span>
+        </div>
+        <div class="c-stub-meta">${t.system} &middot; ${t.module} &middot; Updated ${timeAgo(t.updatedAt)}</div>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('.c-stub').forEach(el=> el.onclick = ()=> openDrawer(el.dataset.id, 'customer'));
+  }catch(e){
+    box.innerHTML = `<div class="empty"><h3>Couldn't load requests</h3><div>${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+/* ---------- Staff data loading ---------- */
+async function loadStaffData(){
+  const [ticketsRes, systemsRes, incidentsRes, staffRes] = await Promise.all([
+    apiFetch('/api/tickets'),
+    apiFetch('/api/systems'),
+    apiFetch('/api/incidents'),
+    apiFetch('/api/users/assignable'),
+  ]);
+  tickets = ticketsRes.tickets;
+  systemsState = {};
+  systemsRes.systems.forEach(s=>{ systemsState[s.name] = s; });
+  incidents = incidentsRes.incidents;
+  teamList = staffRes.staff; // [{username,name,tier}]
+}
+async function refreshTickets(){ tickets = (await apiFetch('/api/tickets')).tickets; }
+async function refreshSystems(){
+  const data = await apiFetch('/api/systems');
+  systemsState = {}; data.systems.forEach(s=>{ systemsState[s.name] = s; });
+}
+async function refreshIncidents(){ incidents = (await apiFetch('/api/incidents')).incidents; }
+
+/* ---------- Staff console: view nav ---------- */
+function renderViewNav(){
+  const views = [
+    {key:'queue', label:'Queue'}, {key:'systems', label:'Systems & Incidents'},
+    {key:'reports', label:'Reports'}, {key:'kb', label:'Knowledge base'}
+  ];
+  document.getElementById('viewNav').innerHTML = views.map(v=>
+    `<div class="nav-item ${staffMainView===v.key?'active':''}" data-view="${v.key}"><span>${v.label}</span></div>`).join('');
+  document.querySelectorAll('#viewNav .nav-item').forEach(el=>{
+    el.onclick = ()=>{ staffMainView = el.dataset.view; renderStaff(); };
+  });
+}
+
+function renderStaff(){
+  renderViewNav();
+  const filtersEl = document.getElementById('queueFilters');
+  filtersEl.innerHTML = '';
+  if(staffMainView==='queue') renderQueueFilters();
+  renderTopbar();
+  renderStaffContent();
+}
+
+function renderTopbar(){
+  const bar = document.getElementById('staffTopbar');
+  if(staffMainView==='queue'){
+    bar.innerHTML = `
+      <h1>Queue</h1>
+      <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#545B6B" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" placeholder="Search subject, reporter, or reference..."></div>
+      <div class="viewing-as">Viewing as <select id="viewingAsSelect"><option>All</option>${teamList.map(m=>`<option>${m.name}</option>`).join('')}</select></div>
+      <button class="btn btn-primary" id="newTicketBtn">+ Log request</button>`;
+    document.getElementById('searchInput').value = searchTerm;
+    document.getElementById('searchInput').oninput = (e)=>{ searchTerm = e.target.value; renderStaffContent(); };
+    document.getElementById('viewingAsSelect').value = viewingAs;
+    document.getElementById('viewingAsSelect').onchange = (e)=>{ viewingAs = e.target.value; renderStaffContent(); };
+    document.getElementById('newTicketBtn').onclick = ()=>{ document.getElementById('modalOverlay').classList.add('show'); };
+  } else if(staffMainView==='systems'){
+    bar.innerHTML = `<h1>Systems &amp; incidents</h1><div style="flex:1"></div><button class="btn btn-primary" id="logIncidentBtn">+ Log incident</button>`;
+    document.getElementById('logIncidentBtn').onclick = ()=> document.getElementById('incModalOverlay').classList.add('show');
+  } else if(staffMainView==='reports'){
+    bar.innerHTML = `<h1>Reports</h1><div style="flex:1"></div><button class="btn btn-ghost" id="printReportBtn">Print</button><button class="btn btn-primary" id="downloadReportBtn">Download report</button>`;
+  } else if(staffMainView==='kb'){
+    bar.innerHTML = `<h1>Knowledge base</h1><div class="search" style="max-width:360px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#545B6B" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="kbSearch" placeholder="Search documented fixes..."></div>`;
+    document.getElementById('kbSearch').value = searchTerm;
+    document.getElementById('kbSearch').oninput = (e)=>{ searchTerm = e.target.value; renderStaffContent(); };
+  }
+}
+
+function renderQueueFilters(){
+  const el = document.getElementById('queueFilters');
+  let html = `<div class="nav-label">System</div>`;
+  html += `<div class="nav-item ${filterSystem==='all'?'active':''}" data-f="system" data-v="all"><span>All systems</span></div>`;
+  SYSTEM_NAMES.forEach(s=> html += `<div class="nav-item ${filterSystem===s?'active':''}" data-f="system" data-v="${s}"><span>${s}</span></div>`);
+  if(filterSystem !== 'all'){
+    html += `<div class="nav-label">Module</div>`;
+    html += `<div class="nav-item ${filterModule==='all'?'active':''}" data-f="module" data-v="all"><span>All modules</span></div>`;
+    (SYSTEMS[filterSystem]||[]).forEach(m=> html += `<div class="nav-item ${filterModule===m?'active':''}" data-f="module" data-v="${m}"><span>${m}</span></div>`);
+  }
+  html += `<div class="nav-label">Assigned to</div>`;
+  html += `<div class="nav-item ${filterAssignee==='all'?'active':''}" data-f="assignee" data-v="all"><span>Everyone</span></div>`;
+  html += `<div class="nav-item ${filterAssignee==='Unassigned'?'active':''}" data-f="assignee" data-v="Unassigned"><span>Unassigned</span></div>`;
+  teamList.forEach(m=> html += `<div class="nav-item ${filterAssignee===m.name?'active':''}" data-f="assignee" data-v="${m.name}"><span>${m.name}</span></div>`);
+  html += `<div class="nav-label">Priority</div>`;
+  PRIORITIES.forEach(p=> html += `<div class="nav-item ${filterPriority===p.key?'active':''}" data-f="priority" data-v="${p.key}"><span><span class="priority-dot" style="background:${p.color}"></span>${p.label}</span></div>`);
+  html += `<div class="nav-label">Status</div>`;
+  STATUSES.forEach(s=> html += `<div class="nav-item ${filterStatus===s.key?'active':''}" data-f="status" data-v="${s.key}"><span>${s.label}</span></div>`);
+  html += `<div class="nav-label">SLA</div>`;
+  [['on_track','On track'],['at_risk','At risk'],['breached','Breached']].forEach(([k,l])=> html += `<div class="nav-item ${filterSla===k?'active':''}" data-f="sla" data-v="${k}"><span>${l}</span></div>`);
+  el.innerHTML = html;
+  el.querySelectorAll('.nav-item').forEach(item=>{
+    item.onclick = ()=>{
+      const f = item.dataset.f, v = item.dataset.v;
+      const cur = ({system:filterSystem,module:filterModule,assignee:filterAssignee,priority:filterPriority,status:filterStatus,sla:filterSla})[f];
+      const next = cur===v ? 'all' : v;
+      if(f==='system'){ filterSystem = next; filterModule='all'; }
+      else if(f==='module') filterModule = next;
+      else if(f==='assignee') filterAssignee = next;
+      else if(f==='priority') filterPriority = next;
+      else if(f==='status') filterStatus = next;
+      else if(f==='sla') filterSla = next;
+      renderStaff();
+    };
+  });
+}
+
+function filteredTickets(){
+  let list = tickets.slice();
+  if(viewingAs !== 'All') list = list.filter(t=>t.assignee===viewingAs);
+  if(filterSystem!=='all') list = list.filter(t=>t.system===filterSystem);
+  if(filterModule!=='all') list = list.filter(t=>t.module===filterModule);
+  if(filterAssignee!=='all') list = list.filter(t=>t.assignee===filterAssignee);
+  if(filterPriority!=='all') list = list.filter(t=>t.priority===filterPriority);
+  if(filterStatus!=='all') list = list.filter(t=>t.status===filterStatus);
+  if(filterSla!=='all') list = list.filter(t=>t.slaState===filterSla);
+  if(searchTerm.trim()){
+    const q = searchTerm.trim().toLowerCase();
+    list = list.filter(t=> t.subject.toLowerCase().includes(q) || t.requester.toLowerCase().includes(q) || t.id.toLowerCase().includes(q));
+  }
+  list.sort((a,b)=>b.updatedAt-a.updatedAt);
+  return list;
+}
+
+function renderStaffContent(){
+  const el = document.getElementById('staffContent');
+  if(staffMainView==='queue') return renderQueueList(el);
+  if(staffMainView==='systems') return renderSystemsView(el);
+  if(staffMainView==='reports') return renderReportsView(el);
+  if(staffMainView==='kb') return renderKbView(el);
+}
+
+function renderQueueList(el){
+  const list = filteredTickets();
+  if(list.length===0){ el.innerHTML = `<div class="empty"><h3>No requests match this view</h3><div>Try clearing filters or search.</div></div>`; return; }
+  el.innerHTML = `<div class="list-header"><div>Reference</div><div>Subject</div><div>System / module</div><div>Priority</div><div>SLA</div><div>Assignee</div><div style="text-align:right">Updated</div></div>` +
+    list.map(t=>{
+      const pm = priorityMeta(t.priority), sm = statusMeta(t.status), sla = t.slaState;
+      return `<div class="stub" data-id="${t.id}">
+        <div class="stub-notch top"></div><div class="stub-notch bot"></div>
+        <div><div class="stub-id mono">${t.id}</div><div class="stub-id-sub">${sm.label}</div></div>
+        <div><div class="stub-subject">${escapeHtml(t.subject)}${t.origin==='portal'?'<span class="origin-flag">Portal</span>':''}</div><div class="stub-requester">${escapeHtml(t.requester)}</div></div>
+        <div class="stub-requester">${t.system}<br><span style="color:var(--ink-faint)">${t.module}</span></div>
+        <div><span class="tag" style="background:${pm.wash};color:${pm.color}">${pm.label}</span></div>
+        <div><span class="tag" style="background:${slaWash(sla)};color:${slaColor(sla)}">${slaLabel(sla)}</span></div>
+        <div class="stub-assignee">${escapeHtml(t.assignee)}</div>
+        <div class="stub-time">${timeAgo(t.updatedAt)}</div>
+      </div>`;
+    }).join('');
+  el.querySelectorAll('.stub').forEach(s=> s.onclick = ()=> openDrawer(s.dataset.id, 'staff'));
+}
+
+/* ---------- Systems & incidents view ---------- */
+function statusColor(s){ return s==='Operational' ? 'var(--ok)' : s==='Degraded' ? 'var(--high)' : 'var(--critical)'; }
+function renderSystemsView(el){
+  let html = `<div class="sys-grid">`;
+  SYSTEM_NAMES.forEach(name=>{
+    const st = systemsState[name] || {status:'Operational', uptimeThisMonth:100};
+    html += `<div class="sys-card">
+      <div class="sys-card-top"><h4>${name}</h4><span class="status-dot" style="background:${statusColor(st.status)}"></span></div>
+      <div class="sys-uptime">${Number(st.uptimeThisMonth).toFixed(2)}%</div>
+      <div class="sys-uptime-label">Uptime this month</div>
+      <div class="sys-status-select">
+        <select data-sys="${name}" class="sysStatusSelect">
+          <option ${st.status==='Operational'?'selected':''}>Operational</option>
+          <option ${st.status==='Degraded'?'selected':''}>Degraded</option>
+          <option ${st.status==='Down'?'selected':''}>Down</option>
+        </select>
+      </div>
+    </div>`;
+  });
+  html += `</div><h3 class="section-title">Incident log</h3>`;
+  const sorted = incidents.slice().sort((a,b)=>b.startedAt-a.startedAt);
+  if(sorted.length===0){ html += `<div class="empty"><h3>No incidents logged</h3></div>`; }
+  else{
+    html += sorted.map(i=>{
+      const sevColor = i.severity==='Down'?'var(--critical)': i.severity==='Degraded'?'var(--high)': i.severity==='Investigating'?'var(--accent)':'var(--ok)';
+      const sevWash = i.severity==='Down'?'var(--critical-wash)': i.severity==='Degraded'?'var(--high-wash)': i.severity==='Investigating'?'var(--accent-wash)':'var(--ok-wash)';
+      return `<div class="inc-row">
+        <div class="inc-top">
+          <div><div class="inc-title">${escapeHtml(i.title)}</div>
+          <div class="inc-meta">${i.system}${i.module?' &middot; '+i.module:''} &middot; started ${fmtDateTime(i.startedAt)} &middot; ${i.ongoing?'ongoing, '+fmtMinutes(i.durationMinutes):'lasted '+fmtMinutes(i.durationMinutes)}${i.relatedTicket?' &middot; ref '+i.relatedTicket:''}</div></div>
+          <span class="tag" style="background:${sevWash};color:${sevColor}">${i.ongoing?i.severity:'Resolved'}</span>
+        </div>
+        <div class="inc-desc">${escapeHtml(i.description)}</div>
+        ${i.ongoing? `<div style="margin-top:10px;"><button class="btn btn-sm btn-accent" data-resolve-inc="${i.id}">Mark resolved</button></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.sysStatusSelect').forEach(sel=>{
+    sel.onchange = async ()=>{
+      try{ await apiFetch('/api/systems/' + encodeURIComponent(sel.dataset.sys), { method:'PATCH', body:{ status: sel.value } }); await refreshSystems(); renderStaffContent(); }
+      catch(e){ alert(e.message); }
+    };
+  });
+  el.querySelectorAll('[data-resolve-inc]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      try{ await apiFetch(`/api/incidents/${btn.dataset.resolveInc}/resolve`, { method:'POST' }); await Promise.all([refreshIncidents(), refreshSystems()]); renderStaffContent(); }
+      catch(e){ alert(e.message); }
+    };
+  });
+}
+document.getElementById('cancelIncBtn').onclick = ()=> document.getElementById('incModalOverlay').classList.remove('show');
+document.getElementById('incModalOverlay').onclick = (e)=>{ if(e.target.id==='incModalOverlay') document.getElementById('incModalOverlay').classList.remove('show'); };
+document.getElementById('submitIncBtn').onclick = async ()=>{
+  const title = document.getElementById('i_title').value.trim();
+  if(!title){ document.getElementById('i_title').style.borderColor='var(--critical)'; return; }
+  const module = document.getElementById('i_module').value;
+  const body = {
+    system: document.getElementById('i_system').value,
+    module: module==='all' ? null : module,
+    severity: document.getElementById('i_severity').value,
+    title, description: document.getElementById('i_description').value.trim(),
+  };
+  try{
+    await apiFetch('/api/incidents', { method:'POST', body });
+    await Promise.all([refreshIncidents(), refreshSystems()]);
+    document.getElementById('incModalOverlay').classList.remove('show');
+    ['i_title','i_description'].forEach(id=>document.getElementById(id).value='');
+    renderStaffContent();
+  }catch(e){ alert(e.message); }
+};
+
+/* ---------- Reports view ---------- */
+async function renderReportsView(el){
+  el.innerHTML = '<div class="empty">Loading&hellip;</div>';
+  let d;
+  try{ d = await apiFetch('/api/reports?period=' + reportPeriod); }
+  catch(e){ el.innerHTML = `<div class="empty"><h3>Couldn't load report</h3><div>${escapeHtml(e.message)}</div></div>`; return; }
+
+  const maxSys = Math.max(1, ...Object.values(d.bySystem));
+  const maxPri = Math.max(1, ...Object.values(d.byPriority));
+  const maxAss = Math.max(1, ...Object.values(d.byAssigneeOpenLoad));
+  el.innerHTML = `
+    <div class="report-toggle">
+      <button class="btn ${reportPeriod==='daily'?'btn-primary':'btn-ghost'} btn-sm" id="rpDaily">Daily</button>
+      <button class="btn ${reportPeriod==='weekly'?'btn-primary':'btn-ghost'} btn-sm" id="rpWeekly">Weekly</button>
+      <div style="margin-left:10px;font-size:12px;color:var(--ink-faint);align-self:center;">${new Date(d.start).toLocaleDateString()} &ndash; ${new Date(d.end).toLocaleDateString()}</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">${d.newRequests}</div><div class="stat-label">New requests</div></div>
+      <div class="stat-card"><div class="stat-num">${d.resolved}</div><div class="stat-label">Resolved</div></div>
+      <div class="stat-card"><div class="stat-num">${d.slaCompliancePct.toFixed(0)}%</div><div class="stat-label">SLA compliance</div></div>
+      <div class="stat-card"><div class="stat-num">${d.avgResolutionHours.toFixed(1)}h</div><div class="stat-label">Avg. resolution time</div></div>
+      <div class="stat-card"><div class="stat-num">${d.openBacklog}</div><div class="stat-label">Open backlog</div></div>
+      <div class="stat-card"><div class="stat-num">${d.currentlyBreached}</div><div class="stat-label">Currently breached</div></div>
+      <div class="stat-card"><div class="stat-num">${d.incidentsLogged}</div><div class="stat-label">Incidents logged</div></div>
+      <div class="stat-card"><div class="stat-num">${fmtMinutes(d.downtimeMinutes)}</div><div class="stat-label">Downtime logged</div></div>
+    </div>
+    <div class="breakdown"><h5>New requests by system</h5>${SYSTEM_NAMES.map(s=>`
+      <div class="bar-row"><div class="bar-label">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.bySystem[s]/maxSys*100)}%"></div></div><div class="bar-val">${d.bySystem[s]}</div></div>`).join('')}</div>
+    <div class="breakdown"><h5>New requests by priority</h5>${PRIORITIES.map(p=>`
+      <div class="bar-row"><div class="bar-label">${p.label}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byPriority[p.key]/maxPri*100)}%;background:${p.color}"></div></div><div class="bar-val">${d.byPriority[p.key]}</div></div>`).join('')}</div>
+    <div class="breakdown"><h5>Current open workload by assignee</h5>${Object.keys(d.byAssigneeOpenLoad).map(name=>`
+      <div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byAssigneeOpenLoad[name]/maxAss*100)}%"></div></div><div class="bar-val">${d.byAssigneeOpenLoad[name]}</div></div>`).join('')}</div>
+  `;
+  document.getElementById('rpDaily').onclick = ()=>{ reportPeriod='daily'; renderStaffContent(); };
+  document.getElementById('rpWeekly').onclick = ()=>{ reportPeriod='weekly'; renderStaffContent(); };
+  const printBtn = document.getElementById('printReportBtn'); if(printBtn) printBtn.onclick = ()=> window.print();
+  const dlBtn = document.getElementById('downloadReportBtn'); if(dlBtn) dlBtn.onclick = ()=> downloadReport(d);
+}
+function downloadReport(d){
+  const lines = [];
+  lines.push(`EduWhizz SaaS Support Desk \u2014 ${reportPeriod==='daily'?'Daily':'Weekly'} Report`);
+  lines.push(`Period: ${new Date(d.start).toLocaleString()} to ${new Date(d.end).toLocaleString()}`);
+  lines.push('');
+  lines.push(`New requests: ${d.newRequests}`);
+  lines.push(`Resolved: ${d.resolved}`);
+  lines.push(`SLA compliance: ${d.slaCompliancePct.toFixed(1)}%`);
+  lines.push(`Average resolution time: ${d.avgResolutionHours.toFixed(1)} hours`);
+  lines.push(`Open backlog: ${d.openBacklog}`);
+  lines.push(`Currently breached: ${d.currentlyBreached}`);
+  lines.push(`Incidents logged: ${d.incidentsLogged}`);
+  lines.push(`Downtime logged: ${fmtMinutes(d.downtimeMinutes)}`);
+  lines.push('');
+  lines.push('New requests by system:');
+  SYSTEM_NAMES.forEach(s=> lines.push(`  ${s}: ${d.bySystem[s]}`));
+  lines.push('');
+  lines.push('New requests by priority:');
+  PRIORITIES.forEach(p=> lines.push(`  ${p.label}: ${d.byPriority[p.key]}`));
+  lines.push('');
+  lines.push('Current open workload by assignee:');
+  Object.keys(d.byAssigneeOpenLoad).forEach(name=> lines.push(`  ${name}: ${d.byAssigneeOpenLoad[name]}`));
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `eduwhizz-${reportPeriod}-report-${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- Knowledge base view ---------- */
+async function renderKbView(el){
+  el.innerHTML = '<div class="empty">Loading&hellip;</div>';
+  try{
+    const data = await apiFetch('/api/kb' + (searchTerm.trim() ? '?search='+encodeURIComponent(searchTerm.trim()) : ''));
+    const entries = data.entries;
+    if(entries.length===0){ el.innerHTML = `<div class="empty"><h3>No documented fixes yet</h3><div>Save a resolution from any ticket thread to build the knowledge base.</div></div>`; return; }
+    el.innerHTML = entries.map(e=>`
+      <div class="kb-entry">
+        <div class="kb-top"><div><div class="kb-subject">${escapeHtml(e.subject)}</div><div class="kb-meta">${e.system} &middot; ${e.module} &middot; ${e.ticketId} &middot; ${fmtDateTime(e.at)}</div></div></div>
+        <div class="kb-body">${escapeHtml(e.body)}</div>
+      </div>`).join('');
+  }catch(e){
+    el.innerHTML = `<div class="empty"><h3>Couldn't load knowledge base</h3><div>${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+/* ---------- Staff: log new ticket modal ---------- */
+document.getElementById('cancelModalBtn').onclick = ()=> document.getElementById('modalOverlay').classList.remove('show');
+document.getElementById('modalOverlay').onclick = (e)=>{ if(e.target.id==='modalOverlay') document.getElementById('modalOverlay').classList.remove('show'); };
+document.getElementById('submitModalBtn').onclick = async ()=>{
+  const subject = document.getElementById('f_subject').value.trim();
+  const requester = document.getElementById('f_requester').value.trim();
+  if(!subject || !requester){
+    document.getElementById('f_subject').style.borderColor = subject?'var(--line)':'var(--critical)';
+    document.getElementById('f_requester').style.borderColor = requester?'var(--line)':'var(--critical)';
+    return;
+  }
+  const body = {
+    system: document.getElementById('f_system').value, module: document.getElementById('f_module').value,
+    category: document.getElementById('f_category').value, subject, requester,
+    requesterEmail: document.getElementById('f_email').value.trim(), priority: document.getElementById('f_priority').value,
+    description: document.getElementById('f_description').value.trim(),
+  };
+  try{
+    const t = await apiFetch('/api/tickets', { method:'POST', body });
+    document.getElementById('modalOverlay').classList.remove('show');
+    await refreshTickets();
+    renderStaffContent();
+    openDrawer(t.id, 'staff');
+  }catch(e){ alert(e.message); }
+};
+
+/* ---------- Shared drawer ---------- */
+function openDrawer(id, role){ openTicketId = id; drawerRole = role; replyMode = 'reply'; renderDrawer(); document.getElementById('drawerOverlay').classList.add('show'); }
+function closeDrawer(){ document.getElementById('drawerOverlay').classList.remove('show'); openTicketId = null; }
+document.getElementById('drawerOverlay').onclick = (e)=>{ if(e.target.id==='drawerOverlay') closeDrawer(); };
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeDrawer(); document.getElementById('modalOverlay').classList.remove('show'); document.getElementById('incModalOverlay').classList.remove('show'); } });
+
+async function fetchTicketForDrawer(id){
+  if(drawerRole==='staff') return apiFetch('/api/tickets/' + encodeURIComponent(id));
+  return apiFetch(`/api/tickets/${encodeURIComponent(id)}/lookup?email=${encodeURIComponent(lookedUpEmail)}`);
+}
+
+async function renderDrawer(){
+  const panel = document.getElementById('drawerPanel');
+  panel.innerHTML = '<div class="empty">Loading&hellip;</div>';
+  let t;
+  try{ t = await fetchTicketForDrawer(openTicketId); }
+  catch(e){ panel.innerHTML = `<div class="empty"><h3>Couldn't load ticket</h3><div>${escapeHtml(e.message)}</div></div>`; return; }
+
+  const pm = priorityMeta(t.priority), sm = statusMeta(t.status), sla = t.slaState;
+
+  const assigneeOptions = `<option ${t.assignee==='Unassigned'?'selected':''}>Unassigned</option>
+    <optgroup label="Support">${teamList.filter(m=>m.tier==='support').map(m=>`<option ${t.assignee===m.name?'selected':''}>${m.name}</option>`).join('')}</optgroup>
+    <optgroup label="Engineering">${teamList.filter(m=>m.tier==='engineering').map(m=>`<option ${t.assignee===m.name?'selected':''}>${m.name}</option>`).join('')}</optgroup>`;
+
+  const canEscalate = drawerRole==='staff' && t.team==='Support' && t.status!=='resolved' && t.status!=='closed';
+
+  const controlsHtml = drawerRole==='staff' ? `
+    <div class="field-row" style="margin-top:16px;">
+      <div class="field"><label>Status</label><select id="d_status">${STATUSES.map(s=>`<option value="${s.key}" ${s.key===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+      <div class="field"><label>Priority</label><select id="d_priority">${PRIORITIES.map(p=>`<option value="${p.key}" ${p.key===t.priority?'selected':''}>${p.label}</option>`).join('')}</select></div>
+      <div class="field"><label>Assigned to</label><select id="d_assignee">${assigneeOptions}</select></div>
+    </div>
+    <div class="sla-row">
+      <span class="tag" style="background:${slaWash(sla)};color:${slaColor(sla)}">${slaLabel(sla)}</span>
+      <span class="tag" style="background:var(--bg);color:var(--ink-soft)">Due ${fmtDateTime(t.slaResolveBy)}</span>
+      <span class="tag" style="background:var(--bg);color:var(--ink-soft)">${t.team} team</span>
+      ${canEscalate ? `<button class="btn btn-sm btn-ghost" id="escalateBtn">Escalate to Engineering</button>` : ''}
+    </div>` : `
+    <div class="sla-row"><span class="tag" style="background:var(--brand-wash);color:var(--brand)">${sm.customerLabel}</span><span class="tag" style="background:${pm.wash};color:${pm.color}">${pm.label} priority</span></div>`;
+
+  const threadHtml = (t.thread||[]).length===0 ? '<div style="color:var(--ink-faint);font-size:13px;">No messages yet.</div>' :
+    t.thread.map((item)=>`<div class="thread-item ${item.type==='note'?'note':''}">
+        <div class="thread-meta"><b>${escapeHtml(item.author)}</b> ${item.type==='note'?'<span class="note-flag">Internal note</span>':''} ${item.kb?'<span class="kb-flag">In knowledge base</span>':''} &middot; ${timeAgo(item.at)}
+        ${drawerRole==='staff' && item.type==='reply' ? `<button class="kb-toggle" data-kb-id="${item.id}" data-kb-on="${item.kb}">${item.kb?'Remove from KB':'Save to KB'}</button>` : ''}
+        </div>
+        <div class="thread-body">${escapeHtml(item.body)}</div>
+      </div>`).join('');
+
+  const replyBoxHtml = drawerRole==='staff' ? `
+    <div class="reply-toggle">
+      <button class="toggle-btn ${replyMode==='reply'?'on':''}" id="modeReply">Reply to reporter</button>
+      <button class="toggle-btn ${replyMode==='note'?'on':''}" id="modeNote">Internal note</button>
+    </div>
+    <textarea id="replyText" placeholder="${replyMode==='reply'?'Write a reply the reporter will see...':'Write a note visible only to staff...'}"></textarea>
+    <div class="reply-actions"><span></span><button class="btn btn-primary" id="sendReplyBtn">${replyMode==='reply'?'Send reply':'Add note'}</button></div>
+  ` : (t.status==='closed' ? `<div style="font-size:12.5px;color:var(--ink-faint);">This request is closed. Submit a new request if you need further help.</div>` : `
+    <textarea id="replyText" placeholder="Add more detail or ask a question..."></textarea>
+    <div class="reply-actions"><span></span><button class="btn btn-primary" id="sendReplyBtn">Send message</button></div>
+  `);
+
+  panel.innerHTML = `
+    <div class="drawer-head">
+      <div class="drawer-head-top">
+        <div>
+          <div class="stub-id-sub mono">${t.id} &middot; ${t.system} / ${t.module}</div>
+          <div class="disp" style="font-size:16.5px;font-weight:700;margin-top:4px;">${escapeHtml(t.subject)}</div>
+          <div style="font-size:12.3px;color:var(--ink-soft);margin-top:4px;">${escapeHtml(t.requester)} ${drawerRole==='staff' && t.requesterEmail ? '&middot; '+escapeHtml(t.requesterEmail) : ''} &middot; ${t.category}</div>
+        </div>
+        <button class="drawer-close" id="closeDrawerBtn">&times;</button>
+      </div>
+      ${controlsHtml}
+    </div>
+    <div class="drawer-body">
+      <div class="desc-block">${escapeHtml(t.description)}</div>
+      <div class="section-label">${drawerRole==='staff'?'Activity':'Messages'}</div>
+      <div id="threadList">${threadHtml}</div>
+    </div>
+    <div class="reply-box">${replyBoxHtml}</div>
+  `;
+
+  document.getElementById('closeDrawerBtn').onclick = closeDrawer;
+  if(drawerRole==='staff'){
+    document.getElementById('d_status').onchange = e=> patchTicket(t.id, {status:e.target.value});
+    document.getElementById('d_priority').onchange = e=> patchTicket(t.id, {priority:e.target.value});
+    document.getElementById('d_assignee').onchange = e=> patchTicket(t.id, {assignee:e.target.value});
+    const escBtn = document.getElementById('escalateBtn');
+    if(escBtn) escBtn.onclick = async ()=>{
+      try{ await apiFetch(`/api/tickets/${t.id}/escalate`, { method:'POST' }); await refreshTickets(); renderStaffContent(); renderDrawer(); }
+      catch(e){ alert(e.message); }
+    };
+    document.getElementById('modeReply').onclick = ()=>{ replyMode='reply'; renderDrawer(); };
+    document.getElementById('modeNote').onclick = ()=>{ replyMode='note'; renderDrawer(); };
+    panel.querySelectorAll('[data-kb-id]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        try{ await apiFetch(`/api/tickets/${t.id}/messages/${btn.dataset.kbId}`, { method:'PATCH', body:{ kb: btn.dataset.kbOn !== 'true' } }); renderDrawer(); }
+        catch(e){ alert(e.message); }
+      };
+    });
+  }
+  const sendBtn = document.getElementById('sendReplyBtn'); if(sendBtn) sendBtn.onclick = ()=> submitReply(t.id);
+}
+
+async function patchTicket(id, patch){
+  try{
+    await apiFetch(`/api/tickets/${id}`, { method:'PATCH', body:patch });
+    await refreshTickets();
+    renderStaffContent();
+    if(openTicketId===id) renderDrawer();
+  }catch(e){ alert(e.message); }
+}
+
+async function submitReply(id){
+  const box = document.getElementById('replyText');
+  const text = box.value.trim();
+  if(!text) return;
+  try{
+    if(drawerRole==='staff'){
+      await apiFetch(`/api/tickets/${id}/messages`, { method:'POST', body:{ type:replyMode, body:text } });
+      await refreshTickets();
+      renderStaffContent();
+    } else {
+      await apiFetch(`/api/tickets/${id}/messages/customer`, { method:'POST', body:{ email:lookedUpEmail, body:text } });
+      await renderLookup();
+    }
+    renderDrawer();
+  }catch(e){ alert(e.message); }
+}
+
+/* ---------- Boot ---------- */
+if(authToken && currentUser){
+  // returning staff session — verify token is still valid before dropping them into the console
+  apiFetch('/api/auth/me').then(()=> goStaff()).catch(()=>{});
+}
+</script>
+</body>
+</html>

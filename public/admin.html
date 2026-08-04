@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EduWhizz &mdash; Account Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+  :root{
+    --bg:#F2F6F7; --surface:#FFFFFF; --ink:#0F2733; --ink-soft:#4C6672; --ink-faint:#8CA2A9; --line:#DCE6E9;
+    --brand:#124D66; --brand-dark:#0B3444; --brand-wash:#E4EEF1;
+    --accent:#2297AA; --coral:#F04E46; --coral-wash:#FDE7E5; --ok:#2E8B57; --ok-wash:#E4F3EA;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;}
+  .disp{font-family:'Space Grotesk',sans-serif;} .mono{font-family:'IBM Plex Mono',monospace;}
+  header{background:var(--brand-dark);color:#fff;padding:14px 26px;display:flex;justify-content:space-between;align-items:center;}
+  header .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
+  header .sub{font-size:10.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;}
+  header button{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;}
+  main{max-width:880px;margin:0 auto;padding:30px 22px 70px;}
+  .hidden{display:none !important;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px;}
+  .card h2{font-family:'Space Grotesk',sans-serif;font-size:17px;margin:0 0 4px;}
+  .card .desc{font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;}
+  label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);margin-bottom:5px;font-weight:700;}
+  input,select{width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-family:'Inter',sans-serif;font-size:13px;background:var(--bg);color:var(--ink);}
+  input:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;background:#fff;}
+  .field{margin-bottom:14px;} .field-row{display:flex;gap:12px;} .field-row .field{flex:1;}
+  .btn{border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;padding:9px 16px;}
+  .btn-primary{background:var(--brand);color:#fff;} .btn-primary:hover{filter:brightness(1.15);}
+  .btn-sm{padding:5px 10px;font-size:11.5px;border-radius:6px;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-soft);}
+  .msg{font-size:12.5px;padding:9px 12px;border-radius:7px;margin-bottom:14px;}
+  .msg.err{background:var(--coral-wash);color:var(--coral);} .msg.ok{background:var(--ok-wash);color:var(--ok);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);padding:8px 10px;border-bottom:1px solid var(--line);}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .tag{display:inline-flex;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--brand-wash);color:var(--brand);}
+  .tag.inactive{background:var(--coral-wash);color:var(--coral);}
+  #loginScreen{max-width:360px;margin:90px auto;}
+</style>
+</head>
+<body>
+
+<header>
+  <div><div class="name">EduWhizz</div><div class="sub">Account Admin</div></div>
+  <button id="logoutBtn" class="hidden">Log out</button>
+</header>
+
+<main>
+  <div id="loginScreen" class="card">
+    <h2>Admin sign in</h2>
+    <div class="desc">Account creation and management is restricted to admin-tier accounts.</div>
+    <div id="loginMsg"></div>
+    <div class="field"><label>Username</label><input id="loginUsername" placeholder="admin"></div>
+    <div class="field"><label>Password</label><input id="loginPassword" type="password"></div>
+    <button class="btn btn-primary" id="loginBtn" style="width:100%;">Sign in</button>
+  </div>
+
+  <div id="adminScreen" class="hidden">
+    <div class="card">
+      <h2>Create an account</h2>
+      <div class="desc">New staff must be created here before they can log in to the support console.</div>
+      <div id="createMsg"></div>
+      <div class="field-row">
+        <div class="field"><label>Full name</label><input id="c_name" placeholder="e.g. Naomi Kiplagat"></div>
+        <div class="field"><label>Username</label><input id="c_username" placeholder="naomi"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Temporary password</label><input id="c_password" type="text" placeholder="min. 8 characters"></div>
+        <div class="field"><label>Role</label>
+          <select id="c_tier"><option value="support">Support</option><option value="engineering">Engineering</option><option value="admin">Admin</option></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="createBtn">Create account</button>
+    </div>
+
+    <div class="card">
+      <h2>Existing accounts</h2>
+      <div class="desc">Deactivate an account to immediately block sign-in, or issue a new temporary password.</div>
+      <div id="listMsg"></div>
+      <table>
+        <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = '/api';
+let token = null;
+
+function showMsg(el, text, kind){
+  el.innerHTML = text ? `<div class="msg ${kind}">${text}</div>` : '';
+}
+
+async function api(path, options={}){
+  const res = await fetch(API + path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}), ...(options.headers||{}) },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+
+document.getElementById('loginBtn').onclick = async ()=>{
+  const msgEl = document.getElementById('loginMsg');
+  showMsg(msgEl, '', '');
+  try{
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const data = await api('/auth/login', {method:'POST', body:{username, password}});
+    if(data.user.tier !== 'admin'){
+      showMsg(msgEl, 'This account does not have admin access.', 'err');
+      token = null;
+      return;
+    }
+    token = data.token;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('adminScreen').classList.remove('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    loadUsers();
+  }catch(e){ showMsg(msgEl, e.message, 'err'); }
+};
+
+document.getElementById('logoutBtn').onclick = ()=>{
+  token = null;
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('adminScreen').classList.add('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('loginPassword').value = '';
+};
+
+document.getElementById('createBtn').onclick = async ()=>{
+  const msgEl = document.getElementById('createMsg');
+  showMsg(msgEl, '', '');
+  try{
+    const body = {
+      name: document.getElementById('c_name').value.trim(),
+      username: document.getElementById('c_username').value.trim(),
+      password: document.getElementById('c_password').value,
+      tier: document.getElementById('c_tier').value,
+    };
+    await api('/users', {method:'POST', body});
+    showMsg(msgEl, 'Account created.', 'ok');
+    ['c_name','c_username','c_password'].forEach(id=>document.getElementById(id).value='');
+    loadUsers();
+  }catch(e){ showMsg(msgEl, e.message, 'err'); }
+};
+
+async function loadUsers(){
+  const msgEl = document.getElementById('listMsg');
+  try{
+    const data = await api('/users');
+    document.getElementById('userRows').innerHTML = data.users.map(u=>`
+      <tr>
+        <td>${u.name}</td>
+        <td class="mono">${u.username}</td>
+        <td><span class="tag">${u.tier}</span></td>
+        <td><span class="tag ${u.active?'':'inactive'}">${u.active?'Active':'Deactivated'}</span></td>
+        <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-ghost" data-toggle="${u.username}" data-active="${u.active}">${u.active?'Deactivate':'Reactivate'}</button>
+          <button class="btn btn-sm btn-ghost" data-reset="${u.username}">Reset password</button>
+        </td>
+      </tr>`).join('');
+    document.querySelectorAll('[data-toggle]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        try{
+          await api(`/users/${btn.dataset.toggle}`, {method:'PATCH', body:{active: btn.dataset.active !== 'true'}});
+          loadUsers();
+        }catch(e){ showMsg(msgEl, e.message, 'err'); }
+      };
+    });
+    document.querySelectorAll('[data-reset]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const newPassword = prompt(`New temporary password for ${btn.dataset.reset} (min. 8 characters):`);
+        if(!newPassword) return;
+        try{
+          await api(`/users/${btn.dataset.reset}/reset-password`, {method:'POST', body:{newPassword}});
+          showMsg(msgEl, `Password reset for ${btn.dataset.reset}.`, 'ok');
+        }catch(e){ showMsg(msgEl, e.message, 'err'); }
+      };
+    });
+  }catch(e){ showMsg(msgEl, e.message, 'err'); }
+}
+</script>
+</body>
+</html>
