@@ -148,6 +148,28 @@
   .bar-fill{height:100%;background:var(--brand);border-radius:5px;}
   .bar-val{width:34px;flex:none;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);}
 
+  .scorecard-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .scorecard-table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--bg);}
+  .scorecard-table td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink-soft);}
+  .scorecard-table tr:last-child td{border-bottom:none;}
+
+  .print-header{display:none;}
+  .print-footer{display:none;}
+
+  @media print{
+    body{background:#fff;}
+    #header, .sidebar, .topbar, .no-print, .reply-box, .drawer, .overlay, .modal-overlay{display:none !important;}
+    #staffView{display:block !important;height:auto !important;}
+    .staff-main{display:block !important;}
+    .content-scroll{overflow:visible !important;padding:0 !important;}
+    .print-header{display:block !important;margin-bottom:22px;border-bottom:2px solid var(--brand);padding-bottom:14px;}
+    .print-brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:var(--brand);}
+    .print-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:20px;margin-top:4px;}
+    .print-meta{font-size:11.5px;color:var(--ink-faint);margin-top:4px;}
+    .print-footer{display:block !important;margin-top:24px;padding-top:12px;border-top:1px solid var(--line);font-size:10.5px;color:var(--ink-faint);text-align:center;}
+    .stat-card, .breakdown{break-inside:avoid;}
+  }
+
   /* KB view */
   .kb-entry{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:10px;}
   .kb-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
@@ -256,6 +278,17 @@
   </div>
 </div>
 
+<div id="otpScreen" class="hidden">
+  <div class="panel" style="max-width:380px;margin:70px auto;">
+    <h2>Enter your code</h2>
+    <div class="subhead" id="otpDesc">We sent a 6-digit code to your email.</div>
+    <div id="otpMsg"></div>
+    <div class="field" style="margin-bottom:18px;"><label>Verification code</label><input id="otpCode" maxlength="6" inputmode="numeric" style="letter-spacing:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:18px;" placeholder="000000"></div>
+    <button class="btn btn-primary" id="otpSubmitBtn" style="width:100%;">Verify &amp; sign in</button>
+    <div style="text-align:center;margin-top:14px;"><button class="switch-link" id="otpBackBtn" style="color:var(--ink-faint);">&larr; Back to sign in</button></div>
+  </div>
+</div>
+
 <!-- CUSTOMER VIEW -->
 <div id="customerView" class="hidden">
   <div class="tabs">
@@ -269,6 +302,10 @@
     <div class="field-row">
       <div class="field"><label>Your name</label><input id="c_requester" placeholder="e.g. Grace Mwangi"></div>
       <div class="field"><label>Email</label><input id="c_email" placeholder="you@email.com"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Your role</label><select id="c_role"></select></div>
+      <div class="field"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>Which system?</label><select id="c_system"></select></div>
@@ -287,7 +324,12 @@
       </div>
     </div>
     <div class="field"><label>Subject</label><input id="c_subject" placeholder="e.g. Cannot submit attendance in Teachers App"></div>
-    <div class="field" style="margin-bottom:6px;"><label>Details</label><textarea id="c_description" placeholder="What happened, when, and any error message you saw."></textarea></div>
+    <div class="field"><label>Details</label><textarea id="c_description" placeholder="What happened, when, and any error message you saw."></textarea></div>
+    <div class="field" style="margin-bottom:6px;">
+      <label>Screenshot (optional, but it really helps)</label>
+      <input id="c_screenshot" type="file" accept="image/*">
+      <div class="hint" id="c_screenshot_hint"></div>
+    </div>
     <div style="display:flex;justify-content:flex-end;"><button class="btn btn-primary" id="submitCustomerTicket">Submit request</button></div>
   </div>
 
@@ -366,6 +408,8 @@ const SYSTEMS = {
 };
 const SYSTEM_NAMES = Object.keys(SYSTEMS);
 const CATEGORIES = ['Bug','Access Request','Performance','Data Issue','Feature Request','Outage'];
+const REPORTER_ROLES = ['Manager','Director','CRM User','Teacher','Guardian','Tenant','Landlord','Pharmacy Staff','Other'];
+const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024; // 3MB raw, matches backend limit
 
 const PRIORITIES = [
   {key:'critical', label:'Critical', color:'var(--critical)', wash:'var(--critical-wash)'},
@@ -391,6 +435,7 @@ function slaWash(s){ return {met:'var(--ok-wash)', breached:'var(--critical-wash
 
 let authToken = localStorage.getItem('eduwhizz_token') || null;
 let currentUser = null;
+let pendingOtpToken = null;
 try { currentUser = JSON.parse(localStorage.getItem('eduwhizz_user') || 'null'); } catch(e) { currentUser = null; }
 
 let tickets = [];
@@ -458,6 +503,8 @@ function fillModuleSelectWithAll(systemSelectId, moduleSelectId){
   document.getElementById(moduleSelectId).innerHTML = '<option value="all">All modules</option>' + (SYSTEMS[sys]||[]).map(m=>`<option value="${m}">${m}</option>`).join('');
 }
 function fillCategorySelect(id){ document.getElementById(id).innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join(''); }
+function fillRoleSelect(id){ document.getElementById(id).innerHTML = REPORTER_ROLES.map(r=>`<option>${r}</option>`).join(''); }
+fillRoleSelect('c_role');
 
 fillSystemSelect('c_system'); fillModuleSelect('c_system','c_module'); fillCategorySelect('c_category');
 document.getElementById('c_system').onchange = ()=> fillModuleSelect('c_system','c_module');
@@ -470,16 +517,24 @@ document.getElementById('i_system').onchange = ()=> fillModuleSelectWithAll('i_s
 
 /* ---------- Role / screen routing ---------- */
 function hideAll(){
-  ['landing','loginScreen','customerView','staffView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['landing','loginScreen','otpScreen','customerView','staffView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('rolePill').classList.add('hidden');
   document.getElementById('switchViewBtn').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
 }
 function goLanding(){ currentRole=null; hideAll(); document.getElementById('landing').classList.remove('hidden'); }
 function goLogin(message){
-  currentRole=null; hideAll();
+  currentRole=null; hideAll(); pendingOtpToken = null;
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginMsg').innerHTML = message ? `<div class="msg err" style="background:var(--critical-wash);color:var(--critical);font-size:12.5px;padding:9px 12px;border-radius:7px;margin-bottom:14px;">${escapeHtml(message)}</div>` : '';
+}
+function goOtpScreen(maskedEmail){
+  hideAll();
+  document.getElementById('otpScreen').classList.remove('hidden');
+  document.getElementById('otpDesc').textContent = `We sent a 6-digit code to ${maskedEmail || 'your email'}.`;
+  document.getElementById('otpCode').value = '';
+  document.getElementById('otpMsg').innerHTML = '';
+  document.getElementById('otpCode').focus();
 }
 function goCustomer(){
   currentRole='customer'; hideAll();
@@ -516,6 +571,11 @@ document.getElementById('loginSubmitBtn').onclick = async ()=>{
   if(!username || !password){ document.getElementById('loginMsg').innerHTML = '<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">Enter your username and password.</div>'; return; }
   try{
     const data = await apiFetch('/api/auth/login', { method:'POST', body:{ username, password } });
+    if(data.otpRequired){
+      pendingOtpToken = data.otpToken;
+      goOtpScreen(data.maskedEmail);
+      return;
+    }
     authToken = data.token; currentUser = data.user;
     localStorage.setItem('eduwhizz_token', authToken);
     localStorage.setItem('eduwhizz_user', JSON.stringify(currentUser));
@@ -527,6 +587,23 @@ document.getElementById('loginSubmitBtn').onclick = async ()=>{
 };
 document.getElementById('loginPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('loginSubmitBtn').click(); });
 
+document.getElementById('otpSubmitBtn').onclick = async ()=>{
+  const code = document.getElementById('otpCode').value.trim();
+  if(!code){ document.getElementById('otpMsg').innerHTML = '<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">Enter the code from your email.</div>'; return; }
+  try{
+    const data = await apiFetch('/api/auth/verify-otp', { method:'POST', body:{ otpToken: pendingOtpToken, code } });
+    authToken = data.token; currentUser = data.user;
+    localStorage.setItem('eduwhizz_token', authToken);
+    localStorage.setItem('eduwhizz_user', JSON.stringify(currentUser));
+    pendingOtpToken = null;
+    await goStaff();
+  }catch(e){
+    document.getElementById('otpMsg').innerHTML = `<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">${escapeHtml(e.message)}</div>`;
+  }
+};
+document.getElementById('otpCode').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('otpSubmitBtn').click(); });
+document.getElementById('otpBackBtn').onclick = ()=> goLogin();
+
 /* ---------- Customer view ---------- */
 document.getElementById('tabSubmit').onclick = ()=>{
   document.getElementById('tabSubmit').classList.add('on'); document.getElementById('tabTrack').classList.remove('on');
@@ -536,6 +613,32 @@ document.getElementById('tabTrack').onclick = ()=>{
   document.getElementById('tabTrack').classList.add('on'); document.getElementById('tabSubmit').classList.remove('on');
   document.getElementById('trackPanel').classList.remove('hidden'); document.getElementById('submitPanel').classList.add('hidden');
 };
+
+document.getElementById('c_screenshot').addEventListener('change', (e)=>{
+  const hint = document.getElementById('c_screenshot_hint');
+  const file = e.target.files[0];
+  if(!file){ hint.textContent = ''; return; }
+  if(!file.type.startsWith('image/')){
+    hint.innerHTML = '<span style="color:var(--critical)">Please choose an image file.</span>';
+    e.target.value = '';
+    return;
+  }
+  if(file.size > MAX_ATTACHMENT_BYTES){
+    hint.innerHTML = '<span style="color:var(--critical)">That image is too large (max ~3MB). Try a smaller screenshot.</span>';
+    e.target.value = '';
+    return;
+  }
+  hint.textContent = `${file.name} \u2014 ${(file.size/1024/1024).toFixed(1)}MB`;
+});
+
+function readFileAsDataUrl(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 async function submitCustomerTicket(){
   const ids = ['c_subject','c_requester','c_email'];
@@ -548,14 +651,21 @@ async function submitCustomerTicket(){
   const body = {
     system: document.getElementById('c_system').value, module: document.getElementById('c_module').value,
     category, subject: document.getElementById('c_subject').value.trim(), requester: document.getElementById('c_requester').value.trim(),
-    requesterEmail: document.getElementById('c_email').value.trim(), priority,
+    requesterEmail: document.getElementById('c_email').value.trim(), requesterRole: document.getElementById('c_role').value, priority,
     description: document.getElementById('c_description').value.trim(),
   };
+  const fileInput = document.getElementById('c_screenshot');
   const btn = document.getElementById('submitCustomerTicket');
   btn.disabled = true;
   try{
+    if(fileInput.files[0]){
+      const dataUrl = await readFileAsDataUrl(fileInput.files[0]);
+      body.attachment = { name: fileInput.files[0].name, type: fileInput.files[0].type, dataUrl };
+    }
     const t = await apiFetch('/api/tickets', { method:'POST', body });
     ['c_subject','c_description'].forEach(id=>document.getElementById(id).value='');
+    fileInput.value = '';
+    document.getElementById('c_screenshot_hint').textContent = '';
     document.getElementById('lookupEmail').value = t.requesterEmail;
     lookedUpEmail = t.requesterEmail.toLowerCase();
     document.getElementById('tabTrack').click();
@@ -731,7 +841,7 @@ function renderQueueList(el){
       return `<div class="stub" data-id="${t.id}">
         <div class="stub-notch top"></div><div class="stub-notch bot"></div>
         <div><div class="stub-id mono">${t.id}</div><div class="stub-id-sub">${sm.label}</div></div>
-        <div><div class="stub-subject">${escapeHtml(t.subject)}${t.origin==='portal'?'<span class="origin-flag">Portal</span>':''}</div><div class="stub-requester">${escapeHtml(t.requester)}</div></div>
+        <div><div class="stub-subject">${escapeHtml(t.subject)}${t.origin==='portal'?'<span class="origin-flag">Portal</span>':''}${t.hasAttachment?'<span class="origin-flag" style="background:var(--high-wash);color:var(--high);">&#128247;</span>':''}</div><div class="stub-requester">${escapeHtml(t.requester)}</div></div>
         <div class="stub-requester">${t.system}<br><span style="color:var(--ink-faint)">${t.module}</span></div>
         <div><span class="tag" style="background:${pm.wash};color:${pm.color}">${pm.label}</span></div>
         <div><span class="tag" style="background:${slaWash(sla)};color:${slaColor(sla)}">${slaLabel(sla)}</span></div>
@@ -824,11 +934,18 @@ async function renderReportsView(el){
   const maxSys = Math.max(1, ...Object.values(d.bySystem));
   const maxPri = Math.max(1, ...Object.values(d.byPriority));
   const maxAss = Math.max(1, ...Object.values(d.byAssigneeOpenLoad));
+  const periodLabel = reportPeriod==='daily' ? 'Daily' : 'Weekly';
+  const rangeLabel = `${new Date(d.start).toLocaleDateString()} \u2013 ${new Date(d.end).toLocaleDateString()}`;
   el.innerHTML = `
-    <div class="report-toggle">
+    <div class="print-header">
+      <div class="print-brand">EduWhizz SaaS Support Desk</div>
+      <div class="print-title">${periodLabel} Performance Report &amp; Staff Scorecard</div>
+      <div class="print-meta">Period: ${rangeLabel} &middot; Generated ${new Date().toLocaleString()} by ${escapeHtml(currentUser ? currentUser.name : '')}</div>
+    </div>
+    <div class="report-toggle no-print">
       <button class="btn ${reportPeriod==='daily'?'btn-primary':'btn-ghost'} btn-sm" id="rpDaily">Daily</button>
       <button class="btn ${reportPeriod==='weekly'?'btn-primary':'btn-ghost'} btn-sm" id="rpWeekly">Weekly</button>
-      <div style="margin-left:10px;font-size:12px;color:var(--ink-faint);align-self:center;">${new Date(d.start).toLocaleDateString()} &ndash; ${new Date(d.end).toLocaleDateString()}</div>
+      <div style="margin-left:10px;font-size:12px;color:var(--ink-faint);align-self:center;">${rangeLabel}</div>
     </div>
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num">${d.newRequests}</div><div class="stat-label">New requests</div></div>
@@ -846,6 +963,29 @@ async function renderReportsView(el){
       <div class="bar-row"><div class="bar-label">${p.label}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byPriority[p.key]/maxPri*100)}%;background:${p.color}"></div></div><div class="bar-val">${d.byPriority[p.key]}</div></div>`).join('')}</div>
     <div class="breakdown"><h5>Current open workload by assignee</h5>${Object.keys(d.byAssigneeOpenLoad).map(name=>`
       <div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byAssigneeOpenLoad[name]/maxAss*100)}%"></div></div><div class="bar-val">${d.byAssigneeOpenLoad[name]}</div></div>`).join('')}</div>
+
+    <div class="breakdown" style="padding:0;overflow:hidden;">
+      <h5 style="padding:16px 18px 0;">Staff scorecard \u2014 ${periodLabel.toLowerCase()}</h5>
+      <table class="scorecard-table">
+        <thead><tr>
+          <th>Name</th><th>Team</th><th>Resolved</th><th>SLA met</th><th>Avg. resolution</th><th>Replies sent</th><th>KB entries</th><th>Current load</th>
+        </tr></thead>
+        <tbody>
+          ${(d.scorecard||[]).map(s=>`
+            <tr>
+              <td><b>${escapeHtml(s.name)}</b></td>
+              <td style="text-transform:capitalize;">${s.tier}</td>
+              <td>${s.ticketsResolved}</td>
+              <td>${s.slaCompliancePct===null ? '\u2014' : s.slaCompliancePct.toFixed(0)+'%'}</td>
+              <td>${s.avgResolutionHours===null ? '\u2014' : s.avgResolutionHours.toFixed(1)+'h'}</td>
+              <td>${s.repliesSent}</td>
+              <td>${s.knowledgeBaseContributions}</td>
+              <td>${s.currentOpenLoad}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="print-footer">EduWhizz SaaS Support Desk &middot; School ERP &middot; Rent Management &middot; Pharmacy Management</div>
   `;
   document.getElementById('rpDaily').onclick = ()=>{ reportPeriod='daily'; renderStaffContent(); };
   document.getElementById('rpWeekly').onclick = ()=>{ reportPeriod='weekly'; renderStaffContent(); };
@@ -874,6 +1014,11 @@ function downloadReport(d){
   lines.push('');
   lines.push('Current open workload by assignee:');
   Object.keys(d.byAssigneeOpenLoad).forEach(name=> lines.push(`  ${name}: ${d.byAssigneeOpenLoad[name]}`));
+  lines.push('');
+  lines.push('Staff scorecard:');
+  (d.scorecard||[]).forEach(s=>{
+    lines.push(`  ${s.name} (${s.tier}) \u2014 resolved: ${s.ticketsResolved}, SLA met: ${s.slaCompliancePct===null?'n/a':s.slaCompliancePct.toFixed(0)+'%'}, avg resolution: ${s.avgResolutionHours===null?'n/a':s.avgResolutionHours.toFixed(1)+'h'}, replies sent: ${s.repliesSent}, KB entries: ${s.knowledgeBaseContributions}, current load: ${s.currentOpenLoad}`);
+  });
   const blob = new Blob([lines.join('\n')], {type:'text/plain'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -991,7 +1136,7 @@ async function renderDrawer(){
         <div>
           <div class="stub-id-sub mono">${t.id} &middot; ${t.system} / ${t.module}</div>
           <div class="disp" style="font-size:16.5px;font-weight:700;margin-top:4px;">${escapeHtml(t.subject)}</div>
-          <div style="font-size:12.3px;color:var(--ink-soft);margin-top:4px;">${escapeHtml(t.requester)} ${drawerRole==='staff' && t.requesterEmail ? '&middot; '+escapeHtml(t.requesterEmail) : ''} &middot; ${t.category}</div>
+          <div style="font-size:12.3px;color:var(--ink-soft);margin-top:4px;">${escapeHtml(t.requester)}${t.requesterRole ? ' &middot; '+escapeHtml(t.requesterRole) : ''} ${drawerRole==='staff' && t.requesterEmail ? '&middot; '+escapeHtml(t.requesterEmail) : ''} &middot; ${t.category}</div>
         </div>
         <button class="drawer-close" id="closeDrawerBtn">&times;</button>
       </div>
@@ -999,6 +1144,12 @@ async function renderDrawer(){
     </div>
     <div class="drawer-body">
       <div class="desc-block">${escapeHtml(t.description)}</div>
+      ${t.hasAttachment ? `<div class="section-label">Screenshot</div>
+        <div style="margin-bottom:16px;">
+          ${t.attachmentData
+            ? `<img src="${t.attachmentData}" alt="Attached screenshot" style="max-width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;" onclick="window.open(this.src,'_blank')">`
+            : `<div style="font-size:12.5px;color:var(--ink-faint);">${escapeHtml(t.attachmentName||'screenshot')} attached.</div>`}
+        </div>` : ''}
       <div class="section-label">${drawerRole==='staff'?'Activity':'Messages'}</div>
       <div id="threadList">${threadHtml}</div>
     </div>

@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 4000;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
 app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN.split(',') }));
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'eduwhizz-support-backend', time: Date.now() }));

@@ -6,6 +6,11 @@ const SYSTEMS = {
 
 const CATEGORIES = ['Bug', 'Access Request', 'Performance', 'Data Issue', 'Feature Request', 'Outage'];
 
+const REPORTER_ROLES = [
+  'Manager', 'Director', 'CRM User', 'Teacher', 'Guardian',
+  'Tenant', 'Landlord', 'Pharmacy Staff', 'Other',
+];
+
 // name -> tier, used to auto-derive a ticket's team when it's assigned to someone
 const TEAM = [
   { username: 'joshua', name: 'Joshua', tier: 'support' },
@@ -45,4 +50,4 @@ function slaState(ticket) {
   return 'on_track';
 }
 
-module.exports = { SYSTEMS, CATEGORIES, TEAM, PRIORITIES, tierOfName, slaResolveBy, slaState };
+module.exports = { SYSTEMS, CATEGORIES, REPORTER_ROLES, TEAM, PRIORITIES, tierOfName, slaResolveBy, slaState };

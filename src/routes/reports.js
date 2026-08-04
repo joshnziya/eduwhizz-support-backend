@@ -53,6 +53,36 @@ router.get('/', requireAuth, (req, res) => {
     (t) => t.status !== 'resolved' && t.status !== 'closed' && slaState(t) === 'breached'
   ).length;
 
+  // Per-staff scorecard: what each active support/engineering person actually did in this period.
+  const staff = listAssignableStaff();
+  const allThreadRows = db.prepare('SELECT tt.*, t.created_at AS ticket_created_at FROM ticket_thread tt JOIN tickets t ON t.id = tt.ticket_id').all();
+  const scorecard = staff.map((m) => {
+    const theirResolved = resolved.filter((t) => t.assignee === m.name);
+    const theirMet = theirResolved.filter((t) => slaState(t) === 'met').length;
+    const theirAvgHours = theirResolved.length
+      ? theirResolved.reduce((sum, t) => sum + (t.resolved_at - t.created_at), 0) / theirResolved.length / 3600000
+      : 0;
+    const currentOpenLoad = allTickets.filter(
+      (t) => t.assignee === m.name && t.status !== 'resolved' && t.status !== 'closed'
+    ).length;
+    const repliesInPeriod = allThreadRows.filter(
+      (r) => r.author === m.name && r.type === 'reply' && r.at >= start && r.at <= end
+    ).length;
+    const kbContributions = allThreadRows.filter((r) => r.author === m.name && r.kb).length;
+
+    return {
+      username: m.username,
+      name: m.name,
+      tier: m.tier,
+      ticketsResolved: theirResolved.length,
+      slaCompliancePct: theirResolved.length ? Number(((theirMet / theirResolved.length) * 100).toFixed(1)) : null,
+      avgResolutionHours: theirResolved.length ? Number(theirAvgHours.toFixed(1)) : null,
+      currentOpenLoad,
+      repliesSent: repliesInPeriod,
+      knowledgeBaseContributions: kbContributions,
+    };
+  });
+
   res.json({
     period,
     start,
@@ -68,6 +98,7 @@ router.get('/', requireAuth, (req, res) => {
     bySystem,
     byPriority,
     byAssigneeOpenLoad: byAssignee,
+    scorecard,
   });
 });
 

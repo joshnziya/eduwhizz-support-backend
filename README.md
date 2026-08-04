@@ -78,27 +78,59 @@ Seeded by `npm run seed`, all with password from `SEED_DEFAULT_PASSWORD` in `.en
 
 ## 4. Authentication & accounts
 
-`POST /api/auth/login` with `{ "username": "...", "password": "..." }` returns a JWT:
+`POST /api/auth/login` with `{ "username": "...", "password": "..." }`:
+- For **support/engineering** accounts, returns a token immediately:
+  ```json
+  { "token": "eyJ...", "user": { "username": "lucy", "name": "Lucy", "tier": "engineering" } }
+  ```
+- For **admin** accounts, this is a two-step process (see below) — the response is instead
+  `{ "otpRequired": true, "otpToken": "...", "maskedEmail": "ad***@yourcompany.com" }`, and no
+  access token is issued until the code is verified.
 
-```json
-{ "token": "eyJ...", "user": { "username": "lucy", "name": "Lucy", "tier": "engineering" } }
-```
-
-Send it back as `Authorization: Bearer <token>` on staff-only endpoints. Tokens expire after 12
-hours (see `JWT_SECRET` / expiry in `src/middleware/auth.js`). Deactivated accounts get a `403`
-on login, even with the correct password.
+Send the access token back as `Authorization: Bearer <token>` on staff-only endpoints. Tokens
+expire after 12 hours (see `JWT_SECRET` / expiry in `src/middleware/auth.js`). Deactivated
+accounts get a `403` on login, even with the correct password.
 
 Portal endpoints (customers submitting or tracking their own requests) do **not** require a
 token — there's no customer account system here, only an email-match check.
+
+### Admin sign-in requires a second factor (emailed code)
+
+Because admin accounts can create/deactivate accounts and see everything, logging in as one takes
+an extra step: after the correct password, a 6-digit code is emailed to that admin's address, and
+`POST /api/auth/verify-otp` with `{ "otpToken": "...", "code": "123456" }` is required to actually
+get an access token. Codes expire after 10 minutes, are single-use, and lock out after 5 wrong
+attempts (asking the admin to log in again for a fresh code). This applies both on `/admin.html`
+and if an admin account signs into the main support console.
+
+**For this to actually email anyone, you need to configure SMTP** — set `SMTP_HOST`, `SMTP_USER`,
+`SMTP_PASS` (and usually `SMTP_PORT`/`SMTP_FROM`) in your environment variables. Any standard
+provider works, for example:
+- **Gmail**: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=youraddress@gmail.com`,
+  `SMTP_PASS=` an [App Password](https://myaccount.google.com/apppasswords) (not your normal
+  Gmail password — Gmail blocks that for SMTP).
+- **Resend / SendGrid / Mailgun**: sign up, verify a sending domain or address, use their SMTP
+  credentials the same way.
+
+**If you don't set these up right away**, the app doesn't break — codes are printed to the server
+console/logs instead (visible in Render's "Logs" tab). That's a real but inconvenient fallback:
+fine for testing today, not something to rely on for actual daily use, since it means checking
+server logs every time an admin needs to log in.
+
+Also set `SEED_ADMIN_EMAIL` to a real address before running `npm run seed` for the first time —
+otherwise the seeded `admin` account gets a placeholder email and can only receive codes via the
+log fallback until someone edits its email through the admin panel itself (a bit of a chicken-and-egg
+problem, so it's worth setting this up front).
 
 ### Where staff accounts get created
 
 There is no self-signup. New staff accounts are created by an **admin** in one of two ways:
 
 1. **The admin panel** — run the server and open `http://localhost:4000/admin.html` (or your
-   deployed URL + `/admin.html`) in a browser. Log in with an admin account, then use the "Create
-   an account" form. You can also deactivate accounts or issue a new temporary password from the
-   same page. This is the practical, no-Postman-required way to manage who has access.
+   deployed URL + `/admin.html`) in a browser. Log in with an admin account (password, then
+   emailed code), then use the "Create an account" form — this now also collects an email address,
+   required for admin-tier accounts. You can deactivate accounts, issue a new temporary password,
+   or update someone's email from the same page.
 2. **Directly via the API** — `POST /api/users` with an admin's token (see below).
 
 The seeded `admin` account (password `changeme123` — **change this immediately**, either via the
@@ -116,22 +148,23 @@ Base URL: `http://localhost:4000/api`
 ### Auth & accounts
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/auth/login` | — | `{ username, password }` → token. Fails if account is deactivated. |
+| POST | `/auth/login` | — | `{ username, password }` → token, or `{ otpRequired: true, otpToken }` for admins |
+| POST | `/auth/verify-otp` | — | `{ otpToken, code }` → token. Required to finish an admin login. |
 | GET | `/auth/me` | staff | current user from token |
 | PATCH | `/auth/me/password` | staff | `{ currentPassword, newPassword }` — change your own password |
 | GET | `/users/assignable` | staff | active support/engineering staff, for an "assign to" dropdown |
 | GET | `/users` | admin | list every account, including inactive ones |
-| POST | `/users` | admin | `{ username, name, password, tier }` — create a staff account |
-| PATCH | `/users/:username` | admin | `{ name?, tier?, active? }` — update or deactivate/reactivate |
+| POST | `/users` | admin | `{ username, name, email, password, tier }` — email required for admin tier |
+| PATCH | `/users/:username` | admin | `{ name?, email?, tier?, active? }` — update or deactivate/reactivate |
 | POST | `/users/:username/reset-password` | admin | `{ newPassword }` — set someone else's password |
 
 ### Tickets
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/tickets` | public | create a ticket (portal submission or, with a token, staff-logged) |
-| GET | `/tickets` | staff | list/filter: `?system=&module=&assignee=&priority=&status=&sla=&search=` |
+| POST | `/tickets` | public | create a ticket: `{ system, module, category, subject, description, requester, requesterEmail, requesterRole, priority, attachment? }`. `attachment` is `{ name, type, dataUrl }` — an optional image, base64 data URL, ~3MB max. |
+| GET | `/tickets` | staff | list/filter: `?system=&module=&assignee=&priority=&status=&sla=&search=` (attachment data omitted here for speed — use the detail endpoint) |
 | GET | `/tickets/lookup?email=` | public | a customer's own tickets, internal notes hidden |
-| GET | `/tickets/:id` | staff | full detail incl. internal notes |
+| GET | `/tickets/:id` | staff | full detail incl. internal notes and any attachment |
 | GET | `/tickets/:id/lookup?email=` | public | detail if `email` matches the requester |
 | PATCH | `/tickets/:id` | staff | update `{ status, priority, assignee }` — team/SLA auto-managed |
 | POST | `/tickets/:id/escalate` | staff | moves ticket to Engineering, unassigns, status → escalated |
@@ -151,10 +184,20 @@ Base URL: `http://localhost:4000/api`
 ### Reports & knowledge base
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/reports?period=daily\|weekly` | staff | the numbers behind your daily/weekly submission |
+| GET | `/reports?period=daily\|weekly` | staff | the numbers behind your daily/weekly submission, plus a per-staff `scorecard` array |
 | GET | `/kb?search=` | public | documented fixes (ticket replies flagged `kb`) |
 
 All ticket/incident IDs follow the same formats as the frontend (`EW-100xx`, `INC-10xx`).
+
+### Printable staff scorecard
+
+The Reports screen in the console (`/` → Support console → Reports) now includes a **Staff
+scorecard** table alongside the usual daily/weekly numbers — resolved tickets, SLA compliance,
+average resolution time, replies sent, knowledge-base contributions, and current workload, one row
+per active support/engineer. Click **Print** there for a clean, letterhead-style printout (the
+sidebar, buttons, and everything else are hidden automatically for print) — that's the "documented
+workflow for scorecard purposes" piece. **Download report** produces the same data as a plain-text
+file if you'd rather attach it somewhere than print it.
 
 ## 6. Alternate deployment options
 
@@ -173,13 +216,21 @@ Render is the fastest path (Section 2), but any Node-friendly host works:
 - Account creation is intentionally admin-only — there's no public staff signup, by design, since
   anyone able to self-register as "engineering" would be a serious hole in a support tool. If you
   want a self-service request-access flow instead, that's a deliberate addition, not a bug fix.
-- No rate limiting on login attempts, and no audit log of who changed what (e.g. who deactivated
-  an account, who reassigned a ticket).
+- No rate limiting on login attempts beyond the 5-try OTP lockout, and no audit log of who changed
+  what (e.g. who deactivated an account, who reassigned a ticket).
 - The "customer" endpoints trust whatever email is passed in — there's no verification (e.g. a
-  magic link or OTP) that the person submitting is really that email's owner.
+  magic link or OTP) that the person submitting is really that email's owner. (Admins now do get
+  OTP verification; customers still don't, since forcing them through email verification just to
+  file a request would add friction most support desks don't want at intake.)
 - Single JWT secret, no refresh tokens, no session revocation (a leaked token stays valid for the
   rest of its 12-hour life — deactivating the account doesn't invalidate tokens already issued).
-- No file/attachment support.
+- Screenshots are stored as base64 text directly in the SQLite database (capped at ~3MB each).
+  That's simple and works, but it means a lot of attachments will bloat `data/eduwhizz.sqlite`
+  noticeably faster than ticket text alone — fine for normal support-desk volumes, but if this
+  gets heavy image traffic, moving attachments to real object storage (S3, R2, etc.) would be the
+  next step.
+- The OTP email code depends entirely on SMTP being configured (Section 4). Until it is, admin
+  codes only reach you via server logs — workable for testing, not for daily reliance.
 
 None of these are hard to add, but they're genuinely important before this handles real customer
 or account data — treat this as a solid, working foundation rather than a finished production

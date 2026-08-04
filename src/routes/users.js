@@ -5,9 +5,10 @@ const { requireAuth, requireTier } = require('../middleware/auth');
 const { listAssignableStaff } = require('../utils/staff');
 
 const router = express.Router();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function serializeUser(row) {
-  return { username: row.username, name: row.name, tier: row.tier, active: !!row.active, createdAt: row.created_at };
+  return { username: row.username, name: row.name, email: row.email || '', tier: row.tier, active: !!row.active, createdAt: row.created_at };
 }
 
 // GET /api/users/assignable  (any logged-in staff member: for populating an "assign to" dropdown)
@@ -23,12 +24,18 @@ router.get('/', requireAuth, requireTier('admin'), (req, res) => {
 
 // POST /api/users  (admin only: create a new staff account)
 router.post('/', requireAuth, requireTier('admin'), (req, res) => {
-  const { username, name, password, tier } = req.body || {};
+  const { username, name, email, password, tier } = req.body || {};
   if (!username || !name || !password || !tier) {
     return res.status(400).json({ error: 'username, name, password, and tier are required.' });
   }
   if (!['support', 'engineering', 'admin'].includes(tier)) {
     return res.status(400).json({ error: "tier must be 'support', 'engineering', or 'admin'." });
+  }
+  if (tier === 'admin' && (!email || !EMAIL_RE.test(email))) {
+    return res.status(400).json({ error: 'A valid email is required for admin accounts, since sign-in codes are sent there.' });
+  }
+  if (email && !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'That email address doesn\u2019t look valid.' });
   }
   if (password.length < 8) {
     return res.status(400).json({ error: 'password must be at least 8 characters.' });
@@ -43,21 +50,29 @@ router.post('/', requireAuth, requireTier('admin'), (req, res) => {
 
   const hash = bcrypt.hashSync(password, 10);
   const now = Date.now();
-  db.prepare(`INSERT INTO users (username, name, password_hash, tier, active, created_at) VALUES (?, ?, ?, ?, 1, ?)`)
-    .run(cleanUsername, name.trim(), hash, tier, now);
+  db.prepare(`INSERT INTO users (username, name, email, password_hash, tier, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)`)
+    .run(cleanUsername, name.trim(), (email || '').trim().toLowerCase(), hash, tier, now);
 
   const row = db.prepare('SELECT * FROM users WHERE username = ?').get(cleanUsername);
   res.status(201).json(serializeUser(row));
 });
 
-// PATCH /api/users/:username  (admin only: update name/tier, or activate/deactivate)
+// PATCH /api/users/:username  (admin only: update name/email/tier, or activate/deactivate)
 router.patch('/:username', requireAuth, requireTier('admin'), (req, res) => {
   const row = db.prepare('SELECT * FROM users WHERE username = ?').get(req.params.username.toLowerCase());
   if (!row) return res.status(404).json({ error: 'Account not found.' });
 
-  const { name, tier, active } = req.body || {};
+  const { name, email, tier, active } = req.body || {};
   if (tier && !['support', 'engineering', 'admin'].includes(tier)) {
     return res.status(400).json({ error: "tier must be 'support', 'engineering', or 'admin'." });
+  }
+  if (email !== undefined && email !== '' && !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'That email address doesn\u2019t look valid.' });
+  }
+  const effectiveTier = tier || row.tier;
+  const effectiveEmail = email !== undefined ? email : row.email;
+  if (effectiveTier === 'admin' && !effectiveEmail) {
+    return res.status(400).json({ error: 'Admin accounts need an email on file for sign-in codes.' });
   }
   if (row.username === req.user.username && active === false) {
     return res.status(400).json({ error: 'You cannot deactivate the account you are currently logged in with.' });
@@ -66,6 +81,7 @@ router.patch('/:username', requireAuth, requireTier('admin'), (req, res) => {
   const fields = [];
   const params = [];
   if (name) { fields.push('name = ?'); params.push(name.trim()); }
+  if (email !== undefined) { fields.push('email = ?'); params.push(email.trim().toLowerCase()); }
   if (tier) { fields.push('tier = ?'); params.push(tier); }
   if (typeof active === 'boolean') { fields.push('active = ?'); params.push(active ? 1 : 0); }
   if (fields.length === 0) return res.status(400).json({ error: 'Nothing to update.' });

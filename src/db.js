@@ -15,9 +15,19 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
+  email TEXT NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL,
   tier TEXT NOT NULL CHECK (tier IN ('support','engineering','admin')),
   active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pending_logins (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
 
@@ -44,11 +54,15 @@ CREATE TABLE IF NOT EXISTS tickets (
   description TEXT NOT NULL DEFAULT '',
   requester_name TEXT NOT NULL,
   requester_email TEXT NOT NULL DEFAULT '',
+  requester_role TEXT NOT NULL DEFAULT '',
   priority TEXT NOT NULL CHECK (priority IN ('critical','high','normal','low')),
   status TEXT NOT NULL CHECK (status IN ('open','assigned','in_progress','escalated','resolved','closed')),
   assignee TEXT NOT NULL DEFAULT 'Unassigned',
   team TEXT NOT NULL DEFAULT 'Support' CHECK (team IN ('Support','Engineering')),
   origin TEXT NOT NULL DEFAULT 'portal' CHECK (origin IN ('portal','staff')),
+  attachment_name TEXT,
+  attachment_type TEXT,
+  attachment_data TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   resolved_at INTEGER
@@ -81,12 +95,26 @@ CREATE INDEX IF NOT EXISTS idx_tickets_system ON tickets(system);
 CREATE INDEX IF NOT EXISTS idx_tickets_assignee ON tickets(assignee);
 CREATE INDEX IF NOT EXISTS idx_thread_ticket ON ticket_thread(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_system ON incidents(system);
+CREATE INDEX IF NOT EXISTS idx_pending_logins_expires ON pending_logins(expires_at);
 `);
 
-// Migration for databases created before the "active" column existed.
+// Migrations for databases created before these columns/tables existed.
 const userColumns = db.prepare(`PRAGMA table_info(users)`).all().map((c) => c.name);
 if (!userColumns.includes('active')) {
   db.exec(`ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1`);
+}
+if (!userColumns.includes('email')) {
+  db.exec(`ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''`);
+}
+
+const ticketColumns = db.prepare(`PRAGMA table_info(tickets)`).all().map((c) => c.name);
+if (!ticketColumns.includes('requester_role')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN requester_role TEXT NOT NULL DEFAULT ''`);
+}
+if (!ticketColumns.includes('attachment_name')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN attachment_name TEXT`);
+  db.exec(`ALTER TABLE tickets ADD COLUMN attachment_type TEXT`);
+  db.exec(`ALTER TABLE tickets ADD COLUMN attachment_data TEXT`);
 }
 
 module.exports = db;

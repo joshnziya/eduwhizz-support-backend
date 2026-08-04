@@ -2,10 +2,11 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { requireAuth, JWT_SECRET } = require('../middleware/auth');
-const { SYSTEMS, slaResolveBy, slaState } = require('../utils/config');
+const { SYSTEMS, REPORTER_ROLES, slaResolveBy, slaState } = require('../utils/config');
 const { tierOfName } = require('../utils/staff');
 
 const router = express.Router();
+const MAX_ATTACHMENT_CHARS = 4_500_000; // ~3.3MB raw image, after base64 overhead
 
 function optionalAuth(req, _res, next) {
   const header = req.headers.authorization || '';
@@ -26,7 +27,7 @@ function nextTicketId() {
   return `EW-${lastNum + 1}`;
 }
 
-function serializeTicket(row, { includeNotes } = { includeNotes: true }) {
+function serializeTicket(row, { includeNotes = true, includeAttachmentData = false } = {}) {
   const thread = db
     .prepare('SELECT * FROM ticket_thread WHERE ticket_id = ? ORDER BY at ASC')
     .all(row.id)
@@ -42,11 +43,16 @@ function serializeTicket(row, { includeNotes } = { includeNotes: true }) {
     description: row.description,
     requester: row.requester_name,
     requesterEmail: row.requester_email,
+    requesterRole: row.requester_role || '',
     priority: row.priority,
     status: row.status,
     assignee: row.assignee,
     team: row.team,
     origin: row.origin,
+    hasAttachment: !!row.attachment_data,
+    attachmentName: row.attachment_name || null,
+    attachmentType: row.attachment_type || null,
+    attachmentData: includeAttachmentData ? row.attachment_data || null : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     resolvedAt: row.resolved_at,
@@ -64,24 +70,41 @@ function validateSystemModule(system, module) {
 
 // POST /api/tickets  (public for portal submissions; if a valid staff token is sent, origin is "staff")
 router.post('/', optionalAuth, (req, res) => {
-  const { system, module, category, subject, description, requester, requesterEmail, priority } = req.body || {};
+  const { system, module, category, subject, description, requester, requesterEmail, requesterRole, priority, attachment } = req.body || {};
   if (!system || !module || !subject || !requester) {
     return res.status(400).json({ error: 'system, module, subject, and requester are required.' });
   }
   const badSysMod = validateSystemModule(system, module);
   if (badSysMod) return res.status(400).json({ error: badSysMod });
+  if (requesterRole && !REPORTER_ROLES.includes(requesterRole)) {
+    return res.status(400).json({ error: 'Unrecognized role.' });
+  }
+
+  let attachmentName = null, attachmentType = null, attachmentData = null;
+  if (attachment && attachment.dataUrl) {
+    if (typeof attachment.dataUrl !== 'string' || !attachment.dataUrl.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Attachment must be an image.' });
+    }
+    if (attachment.dataUrl.length > MAX_ATTACHMENT_CHARS) {
+      return res.status(400).json({ error: 'That screenshot is too large. Please attach an image under ~3MB.' });
+    }
+    attachmentName = (attachment.name || 'screenshot').slice(0, 200);
+    attachmentType = (attachment.type || 'image/png').slice(0, 100);
+    attachmentData = attachment.dataUrl;
+  }
 
   const id = nextTicketId();
   const now = Date.now();
   const resolvedPriority = ['critical', 'high', 'normal', 'low'].includes(priority) ? priority : 'normal';
 
   db.prepare(`
-    INSERT INTO tickets (id, system, module, category, subject, description, requester_name, requester_email,
-      priority, status, assignee, team, origin, created_at, updated_at, resolved_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 'Unassigned', 'Support', ?, ?, ?, NULL)
+    INSERT INTO tickets (id, system, module, category, subject, description, requester_name, requester_email, requester_role,
+      priority, status, assignee, team, origin, attachment_name, attachment_type, attachment_data, created_at, updated_at, resolved_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 'Unassigned', 'Support', ?, ?, ?, ?, ?, ?, NULL)
   `).run(
     id, system, module, category || 'Other', subject, description || '',
-    requester, requesterEmail || '', resolvedPriority, req.user ? 'staff' : 'portal', now, now
+    requester, requesterEmail || '', requesterRole || '', resolvedPriority,
+    req.user ? 'staff' : 'portal', attachmentName, attachmentType, attachmentData, now, now
   );
 
   if (category === 'Outage' || priority === 'critical') {
@@ -93,7 +116,7 @@ router.post('/', optionalAuth, (req, res) => {
   }
 
   const row = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
-  res.status(201).json(serializeTicket(row));
+  res.status(201).json(serializeTicket(row, { includeAttachmentData: true }));
 });
 
 // GET /api/tickets  (staff console; requires auth) supports query filters
@@ -113,7 +136,7 @@ router.get('/', requireAuth, (req, res) => {
   }
   sql += ' ORDER BY updated_at DESC';
   const rows = db.prepare(sql).all(...params);
-  let tickets = rows.map((r) => serializeTicket(r));
+  let tickets = rows.map((r) => serializeTicket(r, { includeAttachmentData: false }));
   if (req.query.sla) tickets = tickets.filter((t) => t.slaState === req.query.sla);
   res.json({ tickets });
 });
@@ -123,14 +146,14 @@ router.get('/lookup', (req, res) => {
   const email = (req.query.email || '').toLowerCase().trim();
   if (!email) return res.status(400).json({ error: 'email query parameter is required.' });
   const rows = db.prepare('SELECT * FROM tickets WHERE LOWER(requester_email) = ? ORDER BY updated_at DESC').all(email);
-  res.json({ tickets: rows.map((r) => serializeTicket(r, { includeNotes: false })) });
+  res.json({ tickets: rows.map((r) => serializeTicket(r, { includeNotes: false, includeAttachmentData: false })) });
 });
 
 // GET /api/tickets/:id  (staff detail, requires auth)
 router.get('/:id', requireAuth, (req, res) => {
   const row = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Ticket not found.' });
-  res.json(serializeTicket(row));
+  res.json(serializeTicket(row, { includeAttachmentData: true }));
 });
 
 // GET /api/tickets/:id/lookup?email=...  (public detail: must match requester email, notes hidden)
@@ -141,7 +164,7 @@ router.get('/:id/lookup', (req, res) => {
   if (!email || email !== row.requester_email.toLowerCase()) {
     return res.status(403).json({ error: 'Email does not match this ticket.' });
   }
-  res.json(serializeTicket(row, { includeNotes: false }));
+  res.json(serializeTicket(row, { includeNotes: false, includeAttachmentData: true }));
 });
 
 // PATCH /api/tickets/:id  (staff: update status/priority/assignee)
