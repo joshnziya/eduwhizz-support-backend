@@ -76,16 +76,13 @@ Seeded by `npm run seed`, all with password from `SEED_DEFAULT_PASSWORD` in `.en
 "Reset password" on each account, or call `PATCH /api/auth/me/password` per account. Treat the
 `admin` login itself as the most sensitive credential in this system.
 
-## 4. Authentication & accounts
+## 4. Authentication, accounts & UI
 
-`POST /api/auth/login` with `{ "username": "...", "password": "..." }`:
-- For **support/engineering** accounts, returns a token immediately:
-  ```json
-  { "token": "eyJ...", "user": { "username": "lucy", "name": "Lucy", "tier": "engineering" } }
-  ```
-- For **admin** accounts, this is a two-step process (see below) — the response is instead
-  `{ "otpRequired": true, "otpToken": "...", "maskedEmail": "ad***@yourcompany.com" }`, and no
-  access token is issued until the code is verified.
+`POST /api/auth/login` with `{ "username": "...", "password": "..." }` returns a token for any
+active account (support, engineering, or admin) immediately — one step, no email/OTP involved:
+```json
+{ "token": "eyJ...", "user": { "username": "lucy", "name": "Lucy", "tier": "engineering" } }
+```
 
 Send the access token back as `Authorization: Bearer <token>` on staff-only endpoints. Tokens
 expire after 12 hours (see `JWT_SECRET` / expiry in `src/middleware/auth.js`). Deactivated
@@ -94,43 +91,24 @@ accounts get a `403` on login, even with the correct password.
 Portal endpoints (customers submitting or tracking their own requests) do **not** require a
 token — there's no customer account system here, only an email-match check.
 
-### Admin sign-in requires a second factor (emailed code)
+### The customer portal and staff console are visually distinct on purpose
 
-Because admin accounts can create/deactivate accounts and see everything, logging in as one takes
-an extra step: after the correct password, a 6-digit code is emailed to that admin's address, and
-`POST /api/auth/verify-otp` with `{ "otpToken": "...", "code": "123456" }` is required to actually
-get an access token. Codes expire after 10 minutes, are single-use, and lock out after 5 wrong
-attempts (asking the admin to log in again for a fresh code). This applies both on `/admin.html`
-and if an admin account signs into the main support console.
-
-**For this to actually email anyone, you need to configure SMTP** — set `SMTP_HOST`, `SMTP_USER`,
-`SMTP_PASS` (and usually `SMTP_PORT`/`SMTP_FROM`) in your environment variables. Any standard
-provider works, for example:
-- **Gmail**: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=youraddress@gmail.com`,
-  `SMTP_PASS=` an [App Password](https://myaccount.google.com/apppasswords) (not your normal
-  Gmail password — Gmail blocks that for SMTP).
-- **Resend / SendGrid / Mailgun**: sign up, verify a sending domain or address, use their SMTP
-  credentials the same way.
-
-**If you don't set these up right away**, the app doesn't break — codes are printed to the server
-console/logs instead (visible in Render's "Logs" tab). That's a real but inconvenient fallback:
-fine for testing today, not something to rely on for actual daily use, since it means checking
-server logs every time an admin needs to log in.
-
-Also set `SEED_ADMIN_EMAIL` to a real address before running `npm run seed` for the first time —
-otherwise the seeded `admin` account gets a placeholder email and can only receive codes via the
-log fallback until someone edits its email through the admin panel itself (a bit of a chicken-and-egg
-problem, so it's worth setting this up front).
+The frontend now switches its whole color treatment depending on who's using it — a light,
+friendly header and softer background for the customer-facing "Report an issue" side, versus a
+dark, dense "operations console" look for the staff console. The goal is that nobody mistakes
+which mode they're in, or which side a link points to. `admin.html` goes further: a coral warning
+stripe and a "Restricted" badge in the header, since account management is the most sensitive
+screen in the system. This is purely visual — the actual access control is still enforced by the
+API (`requireAuth` / `requireTier('admin')`), not by which page looks a certain way.
 
 ### Where staff accounts get created
 
 There is no self-signup. New staff accounts are created by an **admin** in one of two ways:
 
 1. **The admin panel** — run the server and open `http://localhost:4000/admin.html` (or your
-   deployed URL + `/admin.html`) in a browser. Log in with an admin account (password, then
-   emailed code), then use the "Create an account" form — this now also collects an email address,
-   required for admin-tier accounts. You can deactivate accounts, issue a new temporary password,
-   or update someone's email from the same page.
+   deployed URL + `/admin.html`) in a browser. Log in with an admin account, then use the "Create
+   an account" form. You can deactivate accounts or issue a new temporary password from the same
+   page.
 2. **Directly via the API** — `POST /api/users` with an admin's token (see below).
 
 The seeded `admin` account (password `changeme123` — **change this immediately**, either via the
@@ -148,14 +126,13 @@ Base URL: `http://localhost:4000/api`
 ### Auth & accounts
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/auth/login` | — | `{ username, password }` → token, or `{ otpRequired: true, otpToken }` for admins |
-| POST | `/auth/verify-otp` | — | `{ otpToken, code }` → token. Required to finish an admin login. |
+| POST | `/auth/login` | — | `{ username, password }` → token. One step for every tier. |
 | GET | `/auth/me` | staff | current user from token |
 | PATCH | `/auth/me/password` | staff | `{ currentPassword, newPassword }` — change your own password |
 | GET | `/users/assignable` | staff | active support/engineering staff, for an "assign to" dropdown |
 | GET | `/users` | admin | list every account, including inactive ones |
-| POST | `/users` | admin | `{ username, name, email, password, tier }` — email required for admin tier |
-| PATCH | `/users/:username` | admin | `{ name?, email?, tier?, active? }` — update or deactivate/reactivate |
+| POST | `/users` | admin | `{ username, name, password, tier }` — create a staff account |
+| PATCH | `/users/:username` | admin | `{ name?, tier?, active? }` — update or deactivate/reactivate |
 | POST | `/users/:username/reset-password` | admin | `{ newPassword }` — set someone else's password |
 
 ### Tickets
@@ -184,20 +161,32 @@ Base URL: `http://localhost:4000/api`
 ### Reports & knowledge base
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/reports?period=daily\|weekly` | staff | the numbers behind your daily/weekly submission, plus a per-staff `scorecard` array |
+| GET | `/reports?period=daily\|weekly` | staff | see below — stats, a per-staff `scorecard`, and full `ticketsRaised` / `ticketsResolved` lists |
 | GET | `/kb?search=` | public | documented fixes (ticket replies flagged `kb`) |
 
 All ticket/incident IDs follow the same formats as the frontend (`EW-100xx`, `INC-10xx`).
 
-### Printable staff scorecard
+### Reporting: activity log, staff scorecard, and Excel export
 
-The Reports screen in the console (`/` → Support console → Reports) now includes a **Staff
-scorecard** table alongside the usual daily/weekly numbers — resolved tickets, SLA compliance,
-average resolution time, replies sent, knowledge-base contributions, and current workload, one row
-per active support/engineer. Click **Print** there for a clean, letterhead-style printout (the
-sidebar, buttons, and everything else are hidden automatically for print) — that's the "documented
-workflow for scorecard purposes" piece. **Download report** produces the same data as a plain-text
-file if you'd rather attach it somewhere than print it.
+The Reports screen in the console (`/` → Support console → Reports) covers everything for your
+daily/weekly submission:
+
+- **Summary stats** — new requests, resolved, SLA compliance, avg. resolution time, backlog, etc.
+- **Staff scorecard** — one row per active support/engineer: tickets resolved, SLA compliance,
+  avg. resolution time, replies sent, knowledge-base contributions, current workload.
+- **Tickets raised** and **Tickets resolved** — the actual list of tickets in that period, each row
+  showing the reference, subject, system/module, priority, status or SLA outcome, and the **support
+  person in charge** (the assignee) — this is the "who raised what, who resolved what, who was
+  responsible" record you asked for.
+
+Three ways to get it out of the browser:
+- **Print** — a clean, letterhead-style printout (sidebar, buttons, and everything else auto-hidden).
+- **Download text** — a plain-text `.txt` summary, useful for pasting into an email or chat.
+- **Export to Excel** — a real `.xlsx` workbook (built client-side with SheetJS, no server round
+  trip) with four sheets: **Summary**, **Staff Scorecard**, **Tickets Raised**, and **Tickets
+  Resolved** — open it directly in Excel or Google Sheets, no conversion needed. This is the "connect
+  the data with an Excel sheet" piece — every report you pull is a real spreadsheet, not just numbers
+  in a browser tab.
 
 ## 6. Alternate deployment options
 
@@ -216,12 +205,15 @@ Render is the fastest path (Section 2), but any Node-friendly host works:
 - Account creation is intentionally admin-only — there's no public staff signup, by design, since
   anyone able to self-register as "engineering" would be a serious hole in a support tool. If you
   want a self-service request-access flow instead, that's a deliberate addition, not a bug fix.
-- No rate limiting on login attempts beyond the 5-try OTP lockout, and no audit log of who changed
-  what (e.g. who deactivated an account, who reassigned a ticket).
+- No rate limiting on login attempts, and no audit log of who changed what (e.g. who deactivated
+  an account, who reassigned a ticket).
+- Login is a single factor (password only) for every tier, including admin — simpler and more
+  reliable than the emailed-code approach this used to have, but it does mean a leaked admin
+  password is enough on its own. If you want two-factor back, it's a deliberate re-add, not a
+  restored default — this version intentionally trades that off for something that works out of
+  the box without an email provider.
 - The "customer" endpoints trust whatever email is passed in — there's no verification (e.g. a
-  magic link or OTP) that the person submitting is really that email's owner. (Admins now do get
-  OTP verification; customers still don't, since forcing them through email verification just to
-  file a request would add friction most support desks don't want at intake.)
+  magic link) that the person submitting is really that email's owner.
 - Single JWT secret, no refresh tokens, no session revocation (a leaked token stays valid for the
   rest of its 12-hour life — deactivating the account doesn't invalidate tokens already issued).
 - Screenshots are stored as base64 text directly in the SQLite database (capped at ~3MB each).
@@ -229,8 +221,9 @@ Render is the fastest path (Section 2), but any Node-friendly host works:
   noticeably faster than ticket text alone — fine for normal support-desk volumes, but if this
   gets heavy image traffic, moving attachments to real object storage (S3, R2, etc.) would be the
   next step.
-- The OTP email code depends entirely on SMTP being configured (Section 4). Until it is, admin
-  codes only reach you via server logs — workable for testing, not for daily reliance.
+- The Excel export runs entirely in the browser (via the SheetJS library loaded from a CDN) —
+  no server involved, but it does mean export needs an internet connection to load that library
+  the first time on a given device/session.
 
 None of these are hard to add, but they're genuinely important before this handles real customer
 or account data — treat this as a solid, working foundation rather than a finished production

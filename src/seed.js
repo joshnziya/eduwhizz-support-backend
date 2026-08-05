@@ -7,20 +7,13 @@ const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || 'changeme123';
 
 function seedUsers() {
   const insert = db.prepare(
-    `INSERT OR IGNORE INTO users (username, name, email, password_hash, tier, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT OR IGNORE INTO users (username, name, password_hash, tier, created_at) VALUES (?, ?, ?, ?, ?)`
   );
   const hash = bcrypt.hashSync(DEFAULT_PASSWORD, 10);
   const now = Date.now();
-  TEAM.forEach((m) => insert.run(m.username, m.name, `${m.username}@eduwhizz.example`, hash, m.tier, now));
-
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@eduwhizz.example';
-  insert.run('admin', 'Admin', adminEmail, bcrypt.hashSync(DEFAULT_PASSWORD, 10), 'admin', now);
-
+  TEAM.forEach((m) => insert.run(m.username, m.name, hash, m.tier, now));
+  insert.run('admin', 'Admin', bcrypt.hashSync(DEFAULT_PASSWORD, 10), 'admin', now);
   console.log(`Seeded users: ${TEAM.map((m) => m.username).join(', ')}, admin (password: ${DEFAULT_PASSWORD})`);
-  if (!process.env.SEED_ADMIN_EMAIL) {
-    console.log('\u26A0  SEED_ADMIN_EMAIL was not set, so the admin account has a placeholder email (admin@eduwhizz.example).');
-    console.log('   Admin sign-in codes cannot reach a real inbox until you set a real email (via the admin panel, once you can log in some other way, or by setting SEED_ADMIN_EMAIL before seeding).');
-  }
 }
 
 function seedSystems() {

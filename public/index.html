@@ -33,6 +33,20 @@
   .header-right{display:flex;align-items:center;gap:14px;}
   .role-pill{font-size:11.5px;font-weight:600;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);display:flex;align-items:center;gap:6px;}
   .role-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+
+  /* Theme split: customer portal reads light & friendly; staff console stays dark & operational. */
+  body.theme-customer{--bg:#F5F8F5;}
+  body.theme-customer #header{background:#FFFFFF;color:var(--ink);border-bottom:1px solid var(--line);}
+  body.theme-customer .brand-mark{background:var(--accent-wash);border:1px solid var(--accent);}
+  body.theme-customer .brand-text .name{color:var(--brand);}
+  body.theme-customer .brand-text .sub{color:var(--ink-faint);}
+  body.theme-customer .role-pill{background:var(--accent-wash);color:var(--accent);}
+  body.theme-customer .role-pill .dot{background:var(--accent);}
+  body.theme-customer .switch-link{color:var(--ink-faint);}
+  body.theme-customer .switch-link:hover{color:var(--brand);}
+
+  body.theme-staff #header{background:var(--brand-dark);}
+  body.theme-staff{--bg:#EEF2F3;}
   .switch-link{font-size:12px;color:rgba(255,255,255,.65);cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;}
   .switch-link:hover{color:#fff;}
 
@@ -222,6 +236,7 @@
     .sidebar{display:none;}
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -275,17 +290,6 @@
     <div class="field" style="margin-bottom:18px;"><label>Password</label><input id="loginPassword" type="password"></div>
     <button class="btn btn-primary" id="loginSubmitBtn" style="width:100%;">Sign in</button>
     <div style="text-align:center;margin-top:14px;"><button class="switch-link" id="backToLandingBtn" style="color:var(--ink-faint);">&larr; Back</button></div>
-  </div>
-</div>
-
-<div id="otpScreen" class="hidden">
-  <div class="panel" style="max-width:380px;margin:70px auto;">
-    <h2>Enter your code</h2>
-    <div class="subhead" id="otpDesc">We sent a 6-digit code to your email.</div>
-    <div id="otpMsg"></div>
-    <div class="field" style="margin-bottom:18px;"><label>Verification code</label><input id="otpCode" maxlength="6" inputmode="numeric" style="letter-spacing:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:18px;" placeholder="000000"></div>
-    <button class="btn btn-primary" id="otpSubmitBtn" style="width:100%;">Verify &amp; sign in</button>
-    <div style="text-align:center;margin-top:14px;"><button class="switch-link" id="otpBackBtn" style="color:var(--ink-faint);">&larr; Back to sign in</button></div>
   </div>
 </div>
 
@@ -435,7 +439,6 @@ function slaWash(s){ return {met:'var(--ok-wash)', breached:'var(--critical-wash
 
 let authToken = localStorage.getItem('eduwhizz_token') || null;
 let currentUser = null;
-let pendingOtpToken = null;
 try { currentUser = JSON.parse(localStorage.getItem('eduwhizz_user') || 'null'); } catch(e) { currentUser = null; }
 
 let tickets = [];
@@ -517,27 +520,23 @@ document.getElementById('i_system').onchange = ()=> fillModuleSelectWithAll('i_s
 
 /* ---------- Role / screen routing ---------- */
 function hideAll(){
-  ['landing','loginScreen','otpScreen','customerView','staffView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['landing','loginScreen','customerView','staffView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('rolePill').classList.add('hidden');
   document.getElementById('switchViewBtn').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
 }
-function goLanding(){ currentRole=null; hideAll(); document.getElementById('landing').classList.remove('hidden'); }
+function setTheme(mode){
+  document.body.classList.remove('theme-customer','theme-staff');
+  if(mode) document.body.classList.add('theme-'+mode);
+}
+function goLanding(){ currentRole=null; hideAll(); setTheme(null); document.getElementById('landing').classList.remove('hidden'); }
 function goLogin(message){
-  currentRole=null; hideAll(); pendingOtpToken = null;
+  currentRole=null; hideAll(); setTheme('staff');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginMsg').innerHTML = message ? `<div class="msg err" style="background:var(--critical-wash);color:var(--critical);font-size:12.5px;padding:9px 12px;border-radius:7px;margin-bottom:14px;">${escapeHtml(message)}</div>` : '';
 }
-function goOtpScreen(maskedEmail){
-  hideAll();
-  document.getElementById('otpScreen').classList.remove('hidden');
-  document.getElementById('otpDesc').textContent = `We sent a 6-digit code to ${maskedEmail || 'your email'}.`;
-  document.getElementById('otpCode').value = '';
-  document.getElementById('otpMsg').innerHTML = '';
-  document.getElementById('otpCode').focus();
-}
 function goCustomer(){
-  currentRole='customer'; hideAll();
+  currentRole='customer'; hideAll(); setTheme('customer');
   document.getElementById('customerView').classList.remove('hidden');
   document.getElementById('rolePill').classList.remove('hidden');
   document.getElementById('rolePillText').textContent = 'Reporting an issue';
@@ -545,7 +544,7 @@ function goCustomer(){
 }
 async function goStaff(){
   if(!authToken || !currentUser){ goLogin(); return; }
-  currentRole='staff'; hideAll();
+  currentRole='staff'; hideAll(); setTheme('staff');
   document.getElementById('staffView').classList.remove('hidden');
   document.getElementById('rolePill').classList.remove('hidden');
   document.getElementById('rolePillText').textContent = `${currentUser.name} \u00b7 ${currentUser.tier}`;
@@ -571,11 +570,6 @@ document.getElementById('loginSubmitBtn').onclick = async ()=>{
   if(!username || !password){ document.getElementById('loginMsg').innerHTML = '<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">Enter your username and password.</div>'; return; }
   try{
     const data = await apiFetch('/api/auth/login', { method:'POST', body:{ username, password } });
-    if(data.otpRequired){
-      pendingOtpToken = data.otpToken;
-      goOtpScreen(data.maskedEmail);
-      return;
-    }
     authToken = data.token; currentUser = data.user;
     localStorage.setItem('eduwhizz_token', authToken);
     localStorage.setItem('eduwhizz_user', JSON.stringify(currentUser));
@@ -586,23 +580,6 @@ document.getElementById('loginSubmitBtn').onclick = async ()=>{
   }
 };
 document.getElementById('loginPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('loginSubmitBtn').click(); });
-
-document.getElementById('otpSubmitBtn').onclick = async ()=>{
-  const code = document.getElementById('otpCode').value.trim();
-  if(!code){ document.getElementById('otpMsg').innerHTML = '<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">Enter the code from your email.</div>'; return; }
-  try{
-    const data = await apiFetch('/api/auth/verify-otp', { method:'POST', body:{ otpToken: pendingOtpToken, code } });
-    authToken = data.token; currentUser = data.user;
-    localStorage.setItem('eduwhizz_token', authToken);
-    localStorage.setItem('eduwhizz_user', JSON.stringify(currentUser));
-    pendingOtpToken = null;
-    await goStaff();
-  }catch(e){
-    document.getElementById('otpMsg').innerHTML = `<div style="color:var(--critical);font-size:12.5px;margin-bottom:12px;">${escapeHtml(e.message)}</div>`;
-  }
-};
-document.getElementById('otpCode').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('otpSubmitBtn').click(); });
-document.getElementById('otpBackBtn').onclick = ()=> goLogin();
 
 /* ---------- Customer view ---------- */
 document.getElementById('tabSubmit').onclick = ()=>{
@@ -762,7 +739,7 @@ function renderTopbar(){
     bar.innerHTML = `<h1>Systems &amp; incidents</h1><div style="flex:1"></div><button class="btn btn-primary" id="logIncidentBtn">+ Log incident</button>`;
     document.getElementById('logIncidentBtn').onclick = ()=> document.getElementById('incModalOverlay').classList.add('show');
   } else if(staffMainView==='reports'){
-    bar.innerHTML = `<h1>Reports</h1><div style="flex:1"></div><button class="btn btn-ghost" id="printReportBtn">Print</button><button class="btn btn-primary" id="downloadReportBtn">Download report</button>`;
+    bar.innerHTML = `<h1>Reports</h1><div style="flex:1"></div><button class="btn btn-ghost" id="printReportBtn">Print</button><button class="btn btn-ghost" id="downloadReportBtn">Download text</button><button class="btn btn-primary" id="downloadExcelBtn">Export to Excel</button>`;
   } else if(staffMainView==='kb'){
     bar.innerHTML = `<h1>Knowledge base</h1><div class="search" style="max-width:360px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#545B6B" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="kbSearch" placeholder="Search documented fixes..."></div>`;
     document.getElementById('kbSearch').value = searchTerm;
@@ -985,12 +962,53 @@ async function renderReportsView(el){
         </tbody>
       </table>
     </div>
+
+    <div class="breakdown" style="padding:0;overflow:hidden;">
+      <h5 style="padding:16px 18px 0;">Tickets raised \u2014 ${periodLabel.toLowerCase()} (${d.ticketsRaised.length})</h5>
+      <table class="scorecard-table">
+        <thead><tr><th>Reference</th><th>Subject</th><th>System / module</th><th>Priority</th><th>Status</th><th>Support person in charge</th><th>Raised</th></tr></thead>
+        <tbody>
+          ${d.ticketsRaised.length===0 ? `<tr><td colspan="7" style="color:var(--ink-faint);">No tickets raised in this period.</td></tr>` :
+            d.ticketsRaised.map(t=>`
+            <tr>
+              <td class="mono">${t.id}</td>
+              <td>${escapeHtml(t.subject)}</td>
+              <td>${t.system} / ${t.module}</td>
+              <td style="text-transform:capitalize;">${t.priority}</td>
+              <td>${statusMeta(t.status).label}</td>
+              <td>${escapeHtml(t.assignee)}</td>
+              <td>${fmtDateTime(t.createdAt)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="breakdown" style="padding:0;overflow:hidden;">
+      <h5 style="padding:16px 18px 0;">Tickets resolved \u2014 ${periodLabel.toLowerCase()} (${d.ticketsResolved.length})</h5>
+      <table class="scorecard-table">
+        <thead><tr><th>Reference</th><th>Subject</th><th>System / module</th><th>Priority</th><th>SLA</th><th>Support person in charge</th><th>Resolved</th></tr></thead>
+        <tbody>
+          ${d.ticketsResolved.length===0 ? `<tr><td colspan="7" style="color:var(--ink-faint);">No tickets resolved in this period.</td></tr>` :
+            d.ticketsResolved.map(t=>`
+            <tr>
+              <td class="mono">${t.id}</td>
+              <td>${escapeHtml(t.subject)}</td>
+              <td>${t.system} / ${t.module}</td>
+              <td style="text-transform:capitalize;">${t.priority}</td>
+              <td>${slaLabel(t.slaState)}</td>
+              <td>${escapeHtml(t.assignee)}</td>
+              <td>${fmtDateTime(t.resolvedAt)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
     <div class="print-footer">EduWhizz SaaS Support Desk &middot; School ERP &middot; Rent Management &middot; Pharmacy Management</div>
   `;
   document.getElementById('rpDaily').onclick = ()=>{ reportPeriod='daily'; renderStaffContent(); };
   document.getElementById('rpWeekly').onclick = ()=>{ reportPeriod='weekly'; renderStaffContent(); };
   const printBtn = document.getElementById('printReportBtn'); if(printBtn) printBtn.onclick = ()=> window.print();
   const dlBtn = document.getElementById('downloadReportBtn'); if(dlBtn) dlBtn.onclick = ()=> downloadReport(d);
+  const xlBtn = document.getElementById('downloadExcelBtn'); if(xlBtn) xlBtn.onclick = ()=> downloadExcel(d);
 }
 function downloadReport(d){
   const lines = [];
@@ -1025,6 +1043,58 @@ function downloadReport(d){
   a.href = url; a.download = `eduwhizz-${reportPeriod}-report-${new Date().toISOString().slice(0,10)}.txt`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function downloadExcel(d){
+  if(typeof XLSX === 'undefined'){ alert('Excel export library failed to load. Check your internet connection and try again.'); return; }
+  const periodLabel = reportPeriod==='daily' ? 'Daily' : 'Weekly';
+  const wb = XLSX.utils.book_new();
+
+  const summaryRows = [
+    ['EduWhizz SaaS Support Desk', `${periodLabel} Report`],
+    ['Period', `${new Date(d.start).toLocaleString()} to ${new Date(d.end).toLocaleString()}`],
+    ['Generated', new Date().toLocaleString()],
+    ['Generated by', currentUser ? currentUser.name : ''],
+    [],
+    ['Metric', 'Value'],
+    ['New requests', d.newRequests],
+    ['Resolved', d.resolved],
+    ['SLA compliance %', d.slaCompliancePct],
+    ['Avg. resolution time (hours)', d.avgResolutionHours],
+    ['Open backlog', d.openBacklog],
+    ['Currently breached', d.currentlyBreached],
+    ['Incidents logged', d.incidentsLogged],
+    ['Downtime logged (minutes)', d.downtimeMinutes],
+  ];
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  summarySheet['!cols'] = [{wch:28},{wch:32}];
+  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+
+  const scorecardRows = [
+    ['Name','Team','Tickets Resolved','SLA Met %','Avg Resolution (h)','Replies Sent','KB Entries','Current Load'],
+    ...(d.scorecard||[]).map(s=>[s.name, s.tier, s.ticketsResolved, s.slaCompliancePct, s.avgResolutionHours, s.repliesSent, s.knowledgeBaseContributions, s.currentOpenLoad]),
+  ];
+  const scorecardSheet = XLSX.utils.aoa_to_sheet(scorecardRows);
+  scorecardSheet['!cols'] = [{wch:16},{wch:12},{wch:16},{wch:12},{wch:16},{wch:14},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, scorecardSheet, 'Staff Scorecard');
+
+  const raisedRows = [
+    ['Reference','Subject','System','Module','Category','Priority','Status','Support Person In Charge','Team','Requester','Requester Role','Origin','Raised At'],
+    ...d.ticketsRaised.map(t=>[t.id, t.subject, t.system, t.module, t.category, t.priority, t.status, t.assignee, t.team, t.requester, t.requesterRole, t.origin, new Date(t.createdAt).toLocaleString()]),
+  ];
+  const raisedSheet = XLSX.utils.aoa_to_sheet(raisedRows);
+  raisedSheet['!cols'] = [{wch:10},{wch:34},{wch:18},{wch:18},{wch:12},{wch:10},{wch:12},{wch:16},{wch:12},{wch:16},{wch:14},{wch:8},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, raisedSheet, 'Tickets Raised');
+
+  const resolvedRows = [
+    ['Reference','Subject','System','Module','Priority','SLA','Support Person In Charge','Team','Requester','Raised At','Resolved At'],
+    ...d.ticketsResolved.map(t=>[t.id, t.subject, t.system, t.module, t.priority, slaLabel(t.slaState), t.assignee, t.team, t.requester, new Date(t.createdAt).toLocaleString(), new Date(t.resolvedAt).toLocaleString()]),
+  ];
+  const resolvedSheet = XLSX.utils.aoa_to_sheet(resolvedRows);
+  resolvedSheet['!cols'] = [{wch:10},{wch:34},{wch:18},{wch:18},{wch:10},{wch:12},{wch:16},{wch:12},{wch:16},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, resolvedSheet, 'Tickets Resolved');
+
+  XLSX.writeFile(wb, `eduwhizz-${reportPeriod}-report-${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 /* ---------- Knowledge base view ---------- */

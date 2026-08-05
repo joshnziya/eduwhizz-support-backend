@@ -83,6 +83,26 @@ router.get('/', requireAuth, (req, res) => {
     };
   });
 
+  function ticketRow(t) {
+    return {
+      id: t.id,
+      subject: t.subject,
+      system: t.system,
+      module: t.module,
+      category: t.category,
+      priority: t.priority,
+      status: t.status,
+      assignee: t.assignee,
+      team: t.team,
+      requester: t.requester_name,
+      requesterRole: t.requester_role || '',
+      origin: t.origin,
+      createdAt: t.created_at,
+      resolvedAt: t.resolved_at,
+      slaState: slaState(t),
+    };
+  }
+
   res.json({
     period,
     start,
@@ -99,6 +119,8 @@ router.get('/', requireAuth, (req, res) => {
     byPriority,
     byAssigneeOpenLoad: byAssignee,
     scorecard,
+    ticketsRaised: created.sort((a, b) => b.created_at - a.created_at).map(ticketRow),
+    ticketsResolved: resolved.sort((a, b) => b.resolved_at - a.resolved_at).map(ticketRow),
   });
 });
 

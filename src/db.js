@@ -22,15 +22,6 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS pending_logins (
-  token TEXT PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  code_hash TEXT NOT NULL,
-  attempts INTEGER NOT NULL DEFAULT 0,
-  expires_at INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS systems (
   name TEXT PRIMARY KEY,
   status TEXT NOT NULL DEFAULT 'Operational' CHECK (status IN ('Operational','Degraded','Down')),
@@ -95,7 +86,6 @@ CREATE INDEX IF NOT EXISTS idx_tickets_system ON tickets(system);
 CREATE INDEX IF NOT EXISTS idx_tickets_assignee ON tickets(assignee);
 CREATE INDEX IF NOT EXISTS idx_thread_ticket ON ticket_thread(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_system ON incidents(system);
-CREATE INDEX IF NOT EXISTS idx_pending_logins_expires ON pending_logins(expires_at);
 `);
 
 // Migrations for databases created before these columns/tables existed.
