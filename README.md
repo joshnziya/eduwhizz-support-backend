@@ -93,13 +93,33 @@ token — there's no customer account system here, only an email-match check.
 
 ### The customer portal and staff console are visually distinct on purpose
 
-The frontend now switches its whole color treatment depending on who's using it — a light,
-friendly header and softer background for the customer-facing "Report an issue" side, versus a
-dark, dense "operations console" look for the staff console. The goal is that nobody mistakes
-which mode they're in, or which side a link points to. `admin.html` goes further: a coral warning
-stripe and a "Restricted" badge in the header, since account management is the most sensitive
-screen in the system. This is purely visual — the actual access control is still enforced by the
-API (`requireAuth` / `requireTier('admin')`), not by which page looks a certain way.
+The frontend switches its whole color treatment depending on who's using it — a light, friendly
+header and softer background for the customer-facing "Report an issue" side, versus a dark, dense
+"operations console" look for the staff console. `admin.html` goes further: a coral warning stripe
+and a "Restricted" badge, since account management is the most sensitive screen in the system.
+There is also **no way to switch between the customer and staff sides mid-session** — no "switch
+view" button anywhere. Once someone is in one, the only way to the other is logging out and going
+back to the landing page from scratch. This is purely visual/navigational — the actual access
+control is still enforced by the API (`requireAuth` / `requireTier('admin')`), not by which page
+someone happens to be looking at.
+
+### New-ticket email notifications (optional, never blocks anything)
+
+When a ticket is created — from the portal or logged by staff — the API sends a notification email
+to everyone active who has an email on file, saying who raised it (name, role, email if given),
+which system/module, and the description. This is **entirely separate from login** and never blocks
+or delays ticket creation: if it fails or isn't configured, the request still succeeds.
+
+To actually receive these, two things need to be true:
+1. **The account needs an email on file** — set one when creating an account in `/admin.html`
+   (now optional there), or add one later via "Set email" next to any existing account.
+2. **SMTP needs to be configured** — set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (and usually
+   `SMTP_PORT`/`SMTP_FROM`) in your environment variables. Gmail (with an
+   [App Password](https://myaccount.google.com/apppasswords)), Resend, SendGrid, and Mailgun all
+   work the same way — host, port, username, password.
+
+If SMTP isn't configured, notifications are printed to the server console/logs instead (visible in
+Render's "Logs" tab) — nothing breaks, you just won't get an actual email until it's set up.
 
 ### Where staff accounts get created
 
@@ -107,8 +127,8 @@ There is no self-signup. New staff accounts are created by an **admin** in one o
 
 1. **The admin panel** — run the server and open `http://localhost:4000/admin.html` (or your
    deployed URL + `/admin.html`) in a browser. Log in with an admin account, then use the "Create
-   an account" form. You can deactivate accounts or issue a new temporary password from the same
-   page.
+   an account" form (name, username, optional email, temporary password, role). You can deactivate
+   accounts, issue a new temporary password, or set/update someone's email from the same page.
 2. **Directly via the API** — `POST /api/users` with an admin's token (see below).
 
 The seeded `admin` account (password `changeme123` — **change this immediately**, either via the
@@ -129,10 +149,10 @@ Base URL: `http://localhost:4000/api`
 | POST | `/auth/login` | — | `{ username, password }` → token. One step for every tier. |
 | GET | `/auth/me` | staff | current user from token |
 | PATCH | `/auth/me/password` | staff | `{ currentPassword, newPassword }` — change your own password |
-| GET | `/users/assignable` | staff | active support/engineering staff, for an "assign to" dropdown |
+| GET | `/users/assignable` | staff | active support/engineering staff (incl. email), for an "assign to" dropdown |
 | GET | `/users` | admin | list every account, including inactive ones |
-| POST | `/users` | admin | `{ username, name, password, tier }` — create a staff account |
-| PATCH | `/users/:username` | admin | `{ name?, tier?, active? }` — update or deactivate/reactivate |
+| POST | `/users` | admin | `{ username, name, email?, password, tier }` — email is optional, used only for notifications |
+| PATCH | `/users/:username` | admin | `{ name?, email?, tier?, active? }` — update, set email, or deactivate/reactivate |
 | POST | `/users/:username/reset-password` | admin | `{ newPassword }` — set someone else's password |
 
 ### Tickets
@@ -168,25 +188,26 @@ All ticket/incident IDs follow the same formats as the frontend (`EW-100xx`, `IN
 
 ### Reporting: activity log, staff scorecard, and Excel export
 
-The Reports screen in the console (`/` → Support console → Reports) covers everything for your
-daily/weekly submission:
+The Reports screen (`/` → Support console → Reports) is now split into four tabs so it's not one
+long scrolling page:
 
-- **Summary stats** — new requests, resolved, SLA compliance, avg. resolution time, backlog, etc.
+- **Overview** — new requests, resolved, SLA compliance, avg. resolution time, backlog, and
+  breakdowns by system/priority/assignee.
 - **Staff scorecard** — one row per active support/engineer: tickets resolved, SLA compliance,
   avg. resolution time, replies sent, knowledge-base contributions, current workload.
 - **Tickets raised** and **Tickets resolved** — the actual list of tickets in that period, each row
   showing the reference, subject, system/module, priority, status or SLA outcome, and the **support
-  person in charge** (the assignee) — this is the "who raised what, who resolved what, who was
-  responsible" record you asked for.
+  person in charge** (the assignee) — the "who raised what, who resolved what, who was responsible"
+  record.
 
-Three ways to get it out of the browser:
-- **Print** — a clean, letterhead-style printout (sidebar, buttons, and everything else auto-hidden).
-- **Download text** — a plain-text `.txt` summary, useful for pasting into an email or chat.
+Each tab respects the Daily/Weekly toggle. Two ways to get a tab out of the browser:
+- **Print** — a clean, letterhead-style printout of whichever tab is currently open (sidebar,
+  buttons, and the tab bar itself are auto-hidden for print).
 - **Export to Excel** — a real `.xlsx` workbook (built client-side with SheetJS, no server round
-  trip) with four sheets: **Summary**, **Staff Scorecard**, **Tickets Raised**, and **Tickets
-  Resolved** — open it directly in Excel or Google Sheets, no conversion needed. This is the "connect
-  the data with an Excel sheet" piece — every report you pull is a real spreadsheet, not just numbers
-  in a browser tab.
+  trip) with four sheets regardless of which tab you're on: **Summary**, **Staff Scorecard**,
+  **Tickets Raised**, and **Tickets Resolved** — open it directly in Excel or Google Sheets, no
+  conversion needed. This is the "connect the data with an Excel sheet" piece — every report you
+  pull is a real spreadsheet, not just numbers in a browser tab.
 
 ## 6. Alternate deployment options
 
@@ -224,6 +245,9 @@ Render is the fastest path (Section 2), but any Node-friendly host works:
 - The Excel export runs entirely in the browser (via the SheetJS library loaded from a CDN) —
   no server involved, but it does mean export needs an internet connection to load that library
   the first time on a given device/session.
+- New-ticket notification emails are fire-and-forget — if SMTP is down or misconfigured, the
+  ticket is still created successfully but nobody gets emailed (it falls back to server logs).
+  There's no retry queue or delivery confirmation.
 
 None of these are hard to add, but they're genuinely important before this handles real customer
 or account data — treat this as a solid, working foundation rather than a finished production

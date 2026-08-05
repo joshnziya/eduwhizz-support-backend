@@ -71,27 +71,28 @@
   <div id="adminScreen" class="hidden">
     <div class="card">
       <h2>Create an account</h2>
-      <div class="desc">New staff must be created here before they can log in to the support console.</div>
+      <div class="desc">New staff must be created here before they can log in to the support console. Email is optional but recommended \u2014 it's how someone gets notified when a new ticket comes in.</div>
       <div id="createMsg"></div>
       <div class="field-row">
         <div class="field"><label>Full name</label><input id="c_name" placeholder="e.g. Naomi Kiplagat"></div>
         <div class="field"><label>Username</label><input id="c_username" placeholder="naomi"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Temporary password</label><input id="c_password" type="text" placeholder="min. 8 characters"></div>
+        <div class="field"><label>Email (optional)</label><input id="c_email" placeholder="naomi@yourcompany.com"></div>
         <div class="field"><label>Role</label>
           <select id="c_tier"><option value="support">Support</option><option value="engineering">Engineering</option><option value="admin">Admin</option></select>
         </div>
       </div>
+      <div class="field"><label>Temporary password</label><input id="c_password" type="text" placeholder="min. 8 characters"></div>
       <button class="btn btn-primary" id="createBtn">Create account</button>
     </div>
 
     <div class="card">
       <h2>Existing accounts</h2>
-      <div class="desc">Deactivate an account to immediately block sign-in, or issue a new temporary password.</div>
+      <div class="desc">Deactivate an account to immediately block sign-in, issue a new temporary password, or set/update their email.</div>
       <div id="listMsg"></div>
       <table>
-        <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
       </table>
     </div>
@@ -153,12 +154,13 @@ document.getElementById('createBtn').onclick = async ()=>{
     const body = {
       name: document.getElementById('c_name').value.trim(),
       username: document.getElementById('c_username').value.trim(),
+      email: document.getElementById('c_email').value.trim(),
       password: document.getElementById('c_password').value,
       tier: document.getElementById('c_tier').value,
     };
     await api('/users', {method:'POST', body});
     showMsg(msgEl, 'Account created.', 'ok');
-    ['c_name','c_username','c_password'].forEach(id=>document.getElementById(id).value='');
+    ['c_name','c_username','c_email','c_password'].forEach(id=>document.getElementById(id).value='');
     loadUsers();
   }catch(e){ showMsg(msgEl, e.message, 'err'); }
 };
@@ -171,12 +173,14 @@ async function loadUsers(){
       <tr>
         <td>${u.name}</td>
         <td class="mono">${u.username}</td>
+        <td>${u.email || '<span style="color:var(--ink-faint);">not set</span>'}</td>
         <td><span class="tag">${u.tier}</span></td>
         <td><span class="tag ${u.active?'':'inactive'}">${u.active?'Active':'Deactivated'}</span></td>
         <td>${new Date(u.createdAt).toLocaleDateString()}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-sm btn-ghost" data-toggle="${u.username}" data-active="${u.active}">${u.active?'Deactivate':'Reactivate'}</button>
           <button class="btn btn-sm btn-ghost" data-reset="${u.username}">Reset password</button>
+          <button class="btn btn-sm btn-ghost" data-editemail="${u.username}">Set email</button>
         </td>
       </tr>`).join('');
     document.querySelectorAll('[data-toggle]').forEach(btn=>{
@@ -194,6 +198,17 @@ async function loadUsers(){
         try{
           await api(`/users/${btn.dataset.reset}/reset-password`, {method:'POST', body:{newPassword}});
           showMsg(msgEl, `Password reset for ${btn.dataset.reset}.`, 'ok');
+        }catch(e){ showMsg(msgEl, e.message, 'err'); }
+      };
+    });
+    document.querySelectorAll('[data-editemail]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const newEmail = prompt(`Email for ${btn.dataset.editemail} (used for ticket notifications):`);
+        if(newEmail === null) return;
+        try{
+          await api(`/users/${btn.dataset.editemail}`, {method:'PATCH', body:{email: newEmail.trim()}});
+          showMsg(msgEl, `Email updated for ${btn.dataset.editemail}.`, 'ok');
+          loadUsers();
         }catch(e){ showMsg(msgEl, e.message, 'err'); }
       };
     });

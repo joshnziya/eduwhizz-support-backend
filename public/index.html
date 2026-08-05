@@ -150,6 +150,9 @@
 
   /* Reports view */
   .report-toggle{display:flex;gap:8px;margin-bottom:18px;}
+  .report-subtabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;}
+  .report-subtabs .tab-btn{background:none;border:none;padding:9px 4px;margin-right:22px;font-size:13.5px;font-weight:600;color:var(--ink-faint);cursor:pointer;border-bottom:2px solid transparent;}
+  .report-subtabs .tab-btn.on{color:var(--brand);border-bottom-color:var(--brand);}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px;}
   .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;}
   .stat-num{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;}
@@ -253,7 +256,6 @@
   </div>
   <div class="header-right">
     <div class="role-pill hidden" id="rolePill"><span class="dot"></span><span id="rolePillText"></span></div>
-    <button class="switch-link hidden" id="switchViewBtn">Switch view</button>
     <button class="switch-link hidden" id="logoutBtn">Log out</button>
   </div>
 </div>
@@ -454,6 +456,7 @@ let searchTerm = '';
 let openTicketId = null, drawerRole = 'staff', replyMode = 'reply';
 let lookedUpEmail = '';
 let reportPeriod = 'daily';
+let reportTab = 'overview';
 
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function timeAgo(ts){
@@ -522,7 +525,6 @@ document.getElementById('i_system').onchange = ()=> fillModuleSelectWithAll('i_s
 function hideAll(){
   ['landing','loginScreen','customerView','staffView'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('rolePill').classList.add('hidden');
-  document.getElementById('switchViewBtn').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
 }
 function setTheme(mode){
@@ -540,7 +542,6 @@ function goCustomer(){
   document.getElementById('customerView').classList.remove('hidden');
   document.getElementById('rolePill').classList.remove('hidden');
   document.getElementById('rolePillText').textContent = 'Reporting an issue';
-  document.getElementById('switchViewBtn').classList.remove('hidden');
 }
 async function goStaff(){
   if(!authToken || !currentUser){ goLogin(); return; }
@@ -548,7 +549,6 @@ async function goStaff(){
   document.getElementById('staffView').classList.remove('hidden');
   document.getElementById('rolePill').classList.remove('hidden');
   document.getElementById('rolePillText').textContent = `${currentUser.name} \u00b7 ${currentUser.tier}`;
-  document.getElementById('switchViewBtn').classList.remove('hidden');
   document.getElementById('logoutBtn').classList.remove('hidden');
   await loadStaffData();
   renderStaff();
@@ -557,7 +557,6 @@ document.getElementById('brandHome').onclick = goLanding;
 document.getElementById('goCustomer').onclick = goCustomer;
 document.getElementById('goStaff').onclick = ()=> (authToken && currentUser) ? goStaff() : goLogin();
 document.getElementById('backToLandingBtn').onclick = goLanding;
-document.getElementById('switchViewBtn').onclick = ()=>{ if(currentRole==='customer') goStaff(); else goCustomer(); };
 document.getElementById('logoutBtn').onclick = ()=>{
   authToken=null; currentUser=null;
   localStorage.removeItem('eduwhizz_token'); localStorage.removeItem('eduwhizz_user');
@@ -739,7 +738,7 @@ function renderTopbar(){
     bar.innerHTML = `<h1>Systems &amp; incidents</h1><div style="flex:1"></div><button class="btn btn-primary" id="logIncidentBtn">+ Log incident</button>`;
     document.getElementById('logIncidentBtn').onclick = ()=> document.getElementById('incModalOverlay').classList.add('show');
   } else if(staffMainView==='reports'){
-    bar.innerHTML = `<h1>Reports</h1><div style="flex:1"></div><button class="btn btn-ghost" id="printReportBtn">Print</button><button class="btn btn-ghost" id="downloadReportBtn">Download text</button><button class="btn btn-primary" id="downloadExcelBtn">Export to Excel</button>`;
+    bar.innerHTML = `<h1>Reports</h1><div style="flex:1"></div><button class="btn btn-ghost" id="printReportBtn">Print</button><button class="btn btn-primary" id="downloadExcelBtn">Export to Excel</button>`;
   } else if(staffMainView==='kb'){
     bar.innerHTML = `<h1>Knowledge base</h1><div class="search" style="max-width:360px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#545B6B" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="kbSearch" placeholder="Search documented fixes..."></div>`;
     document.getElementById('kbSearch').value = searchTerm;
@@ -749,7 +748,9 @@ function renderTopbar(){
 
 function renderQueueFilters(){
   const el = document.getElementById('queueFilters');
-  let html = `<div class="nav-label">System</div>`;
+  const anyFilterActive = filterSystem!=='all' || filterModule!=='all' || filterAssignee!=='all' || filterPriority!=='all' || filterStatus!=='all' || filterSla!=='all';
+  let html = anyFilterActive ? `<div class="nav-item" id="clearFiltersBtn" style="color:var(--critical);font-weight:600;"><span>&times; Clear all filters</span></div>` : '';
+  html += `<div class="nav-label">System</div>`;
   html += `<div class="nav-item ${filterSystem==='all'?'active':''}" data-f="system" data-v="all"><span>All systems</span></div>`;
   SYSTEM_NAMES.forEach(s=> html += `<div class="nav-item ${filterSystem===s?'active':''}" data-f="system" data-v="${s}"><span>${s}</span></div>`);
   if(filterSystem !== 'all'){
@@ -768,20 +769,29 @@ function renderQueueFilters(){
   html += `<div class="nav-label">SLA</div>`;
   [['on_track','On track'],['at_risk','At risk'],['breached','Breached']].forEach(([k,l])=> html += `<div class="nav-item ${filterSla===k?'active':''}" data-f="sla" data-v="${k}"><span>${l}</span></div>`);
   el.innerHTML = html;
-  el.querySelectorAll('.nav-item').forEach(item=>{
-    item.onclick = ()=>{
-      const f = item.dataset.f, v = item.dataset.v;
-      const cur = ({system:filterSystem,module:filterModule,assignee:filterAssignee,priority:filterPriority,status:filterStatus,sla:filterSla})[f];
-      const next = cur===v ? 'all' : v;
-      if(f==='system'){ filterSystem = next; filterModule='all'; }
-      else if(f==='module') filterModule = next;
-      else if(f==='assignee') filterAssignee = next;
-      else if(f==='priority') filterPriority = next;
-      else if(f==='status') filterStatus = next;
-      else if(f==='sla') filterSla = next;
+
+  // Event delegation on the container: robust against any re-render timing issues,
+  // and works for every filter row (system/module/assignee/priority/status/sla) alike.
+  el.onclick = (e)=>{
+    const clearBtn = e.target.closest('#clearFiltersBtn');
+    if(clearBtn){
+      filterSystem='all'; filterModule='all'; filterAssignee='all'; filterPriority='all'; filterStatus='all'; filterSla='all';
       renderStaff();
-    };
-  });
+      return;
+    }
+    const item = e.target.closest('.nav-item[data-f]');
+    if(!item || !el.contains(item)) return;
+    const f = item.dataset.f, v = item.dataset.v;
+    const cur = ({system:filterSystem,module:filterModule,assignee:filterAssignee,priority:filterPriority,status:filterStatus,sla:filterSla})[f];
+    const next = cur===v ? 'all' : v;
+    if(f==='system'){ filterSystem = next; filterModule='all'; }
+    else if(f==='module') filterModule = next;
+    else if(f==='assignee') filterAssignee = next;
+    else if(f==='priority') filterPriority = next;
+    else if(f==='status') filterStatus = next;
+    else if(f==='sla') filterSla = next;
+    renderStaff();
+  };
 }
 
 function filteredTickets(){
@@ -913,17 +923,19 @@ async function renderReportsView(el){
   const maxAss = Math.max(1, ...Object.values(d.byAssigneeOpenLoad));
   const periodLabel = reportPeriod==='daily' ? 'Daily' : 'Weekly';
   const rangeLabel = `${new Date(d.start).toLocaleDateString()} \u2013 ${new Date(d.end).toLocaleDateString()}`;
-  el.innerHTML = `
-    <div class="print-header">
-      <div class="print-brand">EduWhizz SaaS Support Desk</div>
-      <div class="print-title">${periodLabel} Performance Report &amp; Staff Scorecard</div>
-      <div class="print-meta">Period: ${rangeLabel} &middot; Generated ${new Date().toLocaleString()} by ${escapeHtml(currentUser ? currentUser.name : '')}</div>
-    </div>
-    <div class="report-toggle no-print">
-      <button class="btn ${reportPeriod==='daily'?'btn-primary':'btn-ghost'} btn-sm" id="rpDaily">Daily</button>
-      <button class="btn ${reportPeriod==='weekly'?'btn-primary':'btn-ghost'} btn-sm" id="rpWeekly">Weekly</button>
-      <div style="margin-left:10px;font-size:12px;color:var(--ink-faint);align-self:center;">${rangeLabel}</div>
-    </div>
+
+  const tabs = [
+    {key:'overview', label:'Overview'},
+    {key:'scorecard', label:'Staff scorecard'},
+    {key:'raised', label:`Tickets raised (${d.ticketsRaised.length})`},
+    {key:'resolved', label:`Tickets resolved (${d.ticketsResolved.length})`},
+  ];
+  const tabNav = `<div class="report-subtabs no-print">${tabs.map(t=>
+    `<button class="tab-btn ${reportTab===t.key?'on':''}" data-rt="${t.key}">${t.label}</button>`).join('')}</div>`;
+
+  let body = '';
+  if(reportTab==='overview'){
+    body = `
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num">${d.newRequests}</div><div class="stat-label">New requests</div></div>
       <div class="stat-card"><div class="stat-num">${d.resolved}</div><div class="stat-label">Resolved</div></div>
@@ -939,8 +951,9 @@ async function renderReportsView(el){
     <div class="breakdown"><h5>New requests by priority</h5>${PRIORITIES.map(p=>`
       <div class="bar-row"><div class="bar-label">${p.label}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byPriority[p.key]/maxPri*100)}%;background:${p.color}"></div></div><div class="bar-val">${d.byPriority[p.key]}</div></div>`).join('')}</div>
     <div class="breakdown"><h5>Current open workload by assignee</h5>${Object.keys(d.byAssigneeOpenLoad).map(name=>`
-      <div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byAssigneeOpenLoad[name]/maxAss*100)}%"></div></div><div class="bar-val">${d.byAssigneeOpenLoad[name]}</div></div>`).join('')}</div>
-
+      <div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.byAssigneeOpenLoad[name]/maxAss*100)}%"></div></div><div class="bar-val">${d.byAssigneeOpenLoad[name]}</div></div>`).join('')}</div>`;
+  } else if(reportTab==='scorecard'){
+    body = `
     <div class="breakdown" style="padding:0;overflow:hidden;">
       <h5 style="padding:16px 18px 0;">Staff scorecard \u2014 ${periodLabel.toLowerCase()}</h5>
       <table class="scorecard-table">
@@ -961,8 +974,9 @@ async function renderReportsView(el){
             </tr>`).join('')}
         </tbody>
       </table>
-    </div>
-
+    </div>`;
+  } else if(reportTab==='raised'){
+    body = `
     <div class="breakdown" style="padding:0;overflow:hidden;">
       <h5 style="padding:16px 18px 0;">Tickets raised \u2014 ${periodLabel.toLowerCase()} (${d.ticketsRaised.length})</h5>
       <table class="scorecard-table">
@@ -981,8 +995,9 @@ async function renderReportsView(el){
             </tr>`).join('')}
         </tbody>
       </table>
-    </div>
-
+    </div>`;
+  } else if(reportTab==='resolved'){
+    body = `
     <div class="breakdown" style="padding:0;overflow:hidden;">
       <h5 style="padding:16px 18px 0;">Tickets resolved \u2014 ${periodLabel.toLowerCase()} (${d.ticketsResolved.length})</h5>
       <table class="scorecard-table">
@@ -1001,50 +1016,32 @@ async function renderReportsView(el){
             </tr>`).join('')}
         </tbody>
       </table>
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="print-header">
+      <div class="print-brand">EduWhizz SaaS Support Desk</div>
+      <div class="print-title">${periodLabel} Performance Report &amp; Staff Scorecard \u2014 ${tabs.find(t=>t.key===reportTab).label}</div>
+      <div class="print-meta">Period: ${rangeLabel} &middot; Generated ${new Date().toLocaleString()} by ${escapeHtml(currentUser ? currentUser.name : '')}</div>
     </div>
+    <div class="report-toggle no-print">
+      <button class="btn ${reportPeriod==='daily'?'btn-primary':'btn-ghost'} btn-sm" id="rpDaily">Daily</button>
+      <button class="btn ${reportPeriod==='weekly'?'btn-primary':'btn-ghost'} btn-sm" id="rpWeekly">Weekly</button>
+      <div style="margin-left:10px;font-size:12px;color:var(--ink-faint);align-self:center;">${rangeLabel}</div>
+    </div>
+    ${tabNav}
+    ${body}
     <div class="print-footer">EduWhizz SaaS Support Desk &middot; School ERP &middot; Rent Management &middot; Pharmacy Management</div>
   `;
   document.getElementById('rpDaily').onclick = ()=>{ reportPeriod='daily'; renderStaffContent(); };
   document.getElementById('rpWeekly').onclick = ()=>{ reportPeriod='weekly'; renderStaffContent(); };
+  document.querySelectorAll('[data-rt]').forEach(btn=>{
+    btn.onclick = ()=>{ reportTab = btn.dataset.rt; renderStaffContent(); };
+  });
   const printBtn = document.getElementById('printReportBtn'); if(printBtn) printBtn.onclick = ()=> window.print();
-  const dlBtn = document.getElementById('downloadReportBtn'); if(dlBtn) dlBtn.onclick = ()=> downloadReport(d);
   const xlBtn = document.getElementById('downloadExcelBtn'); if(xlBtn) xlBtn.onclick = ()=> downloadExcel(d);
 }
-function downloadReport(d){
-  const lines = [];
-  lines.push(`EduWhizz SaaS Support Desk \u2014 ${reportPeriod==='daily'?'Daily':'Weekly'} Report`);
-  lines.push(`Period: ${new Date(d.start).toLocaleString()} to ${new Date(d.end).toLocaleString()}`);
-  lines.push('');
-  lines.push(`New requests: ${d.newRequests}`);
-  lines.push(`Resolved: ${d.resolved}`);
-  lines.push(`SLA compliance: ${d.slaCompliancePct.toFixed(1)}%`);
-  lines.push(`Average resolution time: ${d.avgResolutionHours.toFixed(1)} hours`);
-  lines.push(`Open backlog: ${d.openBacklog}`);
-  lines.push(`Currently breached: ${d.currentlyBreached}`);
-  lines.push(`Incidents logged: ${d.incidentsLogged}`);
-  lines.push(`Downtime logged: ${fmtMinutes(d.downtimeMinutes)}`);
-  lines.push('');
-  lines.push('New requests by system:');
-  SYSTEM_NAMES.forEach(s=> lines.push(`  ${s}: ${d.bySystem[s]}`));
-  lines.push('');
-  lines.push('New requests by priority:');
-  PRIORITIES.forEach(p=> lines.push(`  ${p.label}: ${d.byPriority[p.key]}`));
-  lines.push('');
-  lines.push('Current open workload by assignee:');
-  Object.keys(d.byAssigneeOpenLoad).forEach(name=> lines.push(`  ${name}: ${d.byAssigneeOpenLoad[name]}`));
-  lines.push('');
-  lines.push('Staff scorecard:');
-  (d.scorecard||[]).forEach(s=>{
-    lines.push(`  ${s.name} (${s.tier}) \u2014 resolved: ${s.ticketsResolved}, SLA met: ${s.slaCompliancePct===null?'n/a':s.slaCompliancePct.toFixed(0)+'%'}, avg resolution: ${s.avgResolutionHours===null?'n/a':s.avgResolutionHours.toFixed(1)+'h'}, replies sent: ${s.repliesSent}, KB entries: ${s.knowledgeBaseContributions}, current load: ${s.currentOpenLoad}`);
-  });
-  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `eduwhizz-${reportPeriod}-report-${new Date().toISOString().slice(0,10)}.txt`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 function downloadExcel(d){
   if(typeof XLSX === 'undefined'){ alert('Excel export library failed to load. Check your internet connection and try again.'); return; }
   const periodLabel = reportPeriod==='daily' ? 'Daily' : 'Weekly';

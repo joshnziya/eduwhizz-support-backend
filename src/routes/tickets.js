@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { requireAuth, JWT_SECRET } = require('../middleware/auth');
 const { SYSTEMS, REPORTER_ROLES, slaResolveBy, slaState } = require('../utils/config');
-const { tierOfName } = require('../utils/staff');
+const { tierOfName, listNotificationRecipients } = require('../utils/staff');
+const { sendMail } = require('../utils/mailer');
 
 const router = express.Router();
 const MAX_ATTACHMENT_CHARS = 4_500_000; // ~3.3MB raw image, after base64 overhead
@@ -117,6 +118,23 @@ router.post('/', optionalAuth, (req, res) => {
 
   const row = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
   res.status(201).json(serializeTicket(row, { includeAttachmentData: true }));
+
+  // Fire-and-forget: never let a notification failure affect the response above.
+  const recipients = listNotificationRecipients();
+  if (recipients.length) {
+    const lines = [
+      `New ticket ${id} \u2014 ${subject}`,
+      '',
+      `Raised by: ${requester}${requesterRole ? ' (' + requesterRole + ')' : ''}${requesterEmail ? ' <' + requesterEmail + '>' : ''}`,
+      `System: ${system} / ${module}`,
+      `Category: ${category || 'Other'}`,
+      `Priority: ${resolvedPriority}`,
+      '',
+      description || '(no description provided)',
+    ];
+    sendMail({ to: recipients, subject: `[EduWhizz] New ticket ${id}: ${subject}`, text: lines.join('\n') })
+      .catch((e) => console.error('Notification send failed:', e.message));
+  }
 });
 
 // GET /api/tickets  (staff console; requires auth) supports query filters
