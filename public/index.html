@@ -307,7 +307,7 @@
     <div class="subhead">We'll route this to the right team and keep you updated by email.</div>
     <div class="field-row">
       <div class="field"><label>Your name</label><input id="c_requester" placeholder="e.g. Grace Mwangi"></div>
-      <div class="field"><label>Email</label><input id="c_email" placeholder="you@email.com"></div>
+      <div class="field"><label>Email</label><input id="c_email" placeholder="you@email.com"><div class="hint">We'll email you a confirmation and updates on this request.</div></div>
     </div>
     <div class="field-row">
       <div class="field"><label>Your role</label><select id="c_role"></select></div>
@@ -370,7 +370,7 @@
     <div class="field"><label>Subject</label><input id="f_subject" placeholder="e.g. Director console showing stale data"></div>
     <div class="field-row">
       <div class="field"><label>Reporter name</label><input id="f_requester" placeholder="Reported by"></div>
-      <div class="field"><label>Reporter email</label><input id="f_email" placeholder="email (optional)"></div>
+      <div class="field"><label>Reporter email</label><input id="f_email" placeholder="required \u2014 they'll get a confirmation"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>System</label><select id="f_system"></select></div>
@@ -620,6 +620,11 @@ async function submitCustomerTicket(){
   const ids = ['c_subject','c_requester','c_email'];
   let ok = true;
   ids.forEach(id=>{ const v = document.getElementById(id).value.trim(); document.getElementById(id).style.borderColor = v?'var(--line)':'var(--critical)'; if(!v) ok=false; });
+  const emailVal = document.getElementById('c_email').value.trim();
+  if(emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
+    document.getElementById('c_email').style.borderColor = 'var(--critical)';
+    ok = false;
+  }
   if(!ok) return;
   const impact = document.getElementById('c_impact').value;
   const category = document.getElementById('c_category').value;
@@ -722,17 +727,20 @@ function renderStaff(){
 
 function renderTopbar(){
   const bar = document.getElementById('staffTopbar');
+  const isAdmin = currentUser && currentUser.tier === 'admin';
   if(staffMainView==='queue'){
     bar.innerHTML = `
-      <h1>Queue</h1>
+      <h1>${isAdmin ? 'Queue' : 'My tickets'}</h1>
       <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#545B6B" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input id="searchInput" placeholder="Search subject, reporter, or reference..."></div>
-      <div class="viewing-as">Viewing as <select id="viewingAsSelect"><option>All</option>${teamList.map(m=>`<option>${m.name}</option>`).join('')}</select></div>
+      ${isAdmin ? `<div class="viewing-as">Viewing as <select id="viewingAsSelect"><option>All</option>${teamList.map(m=>`<option>${m.name}</option>`).join('')}</select></div>` : ''}
       <button class="btn btn-primary" id="newTicketBtn">+ Log request</button>`;
     document.getElementById('searchInput').value = searchTerm;
     document.getElementById('searchInput').oninput = (e)=>{ searchTerm = e.target.value; renderStaffContent(); };
-    document.getElementById('viewingAsSelect').value = viewingAs;
-    document.getElementById('viewingAsSelect').onchange = (e)=>{ viewingAs = e.target.value; renderStaffContent(); };
+    if(isAdmin){
+      document.getElementById('viewingAsSelect').value = viewingAs;
+      document.getElementById('viewingAsSelect').onchange = (e)=>{ viewingAs = e.target.value; renderStaffContent(); };
+    }
     document.getElementById('newTicketBtn').onclick = ()=>{ document.getElementById('modalOverlay').classList.add('show'); };
   } else if(staffMainView==='systems'){
     bar.innerHTML = `<h1>Systems &amp; incidents</h1><div style="flex:1"></div><button class="btn btn-primary" id="logIncidentBtn">+ Log incident</button>`;
@@ -758,10 +766,17 @@ function renderQueueFilters(){
     html += `<div class="nav-item ${filterModule==='all'?'active':''}" data-f="module" data-v="all"><span>All modules</span></div>`;
     (SYSTEMS[filterSystem]||[]).forEach(m=> html += `<div class="nav-item ${filterModule===m?'active':''}" data-f="module" data-v="${m}"><span>${m}</span></div>`);
   }
+  const isAdminFilter = currentUser && currentUser.tier === 'admin';
   html += `<div class="nav-label">Assigned to</div>`;
-  html += `<div class="nav-item ${filterAssignee==='all'?'active':''}" data-f="assignee" data-v="all"><span>Everyone</span></div>`;
-  html += `<div class="nav-item ${filterAssignee==='Unassigned'?'active':''}" data-f="assignee" data-v="Unassigned"><span>Unassigned</span></div>`;
-  teamList.forEach(m=> html += `<div class="nav-item ${filterAssignee===m.name?'active':''}" data-f="assignee" data-v="${m.name}"><span>${m.name}</span></div>`);
+  if(isAdminFilter){
+    html += `<div class="nav-item ${filterAssignee==='all'?'active':''}" data-f="assignee" data-v="all"><span>Everyone</span></div>`;
+    html += `<div class="nav-item ${filterAssignee==='Unassigned'?'active':''}" data-f="assignee" data-v="Unassigned"><span>Unassigned</span></div>`;
+    teamList.forEach(m=> html += `<div class="nav-item ${filterAssignee===m.name?'active':''}" data-f="assignee" data-v="${m.name}"><span>${m.name}</span></div>`);
+  } else {
+    html += `<div class="nav-item ${filterAssignee==='all'?'active':''}" data-f="assignee" data-v="all"><span>All mine</span></div>`;
+    html += `<div class="nav-item ${filterAssignee===currentUser.name?'active':''}" data-f="assignee" data-v="${currentUser.name}"><span>Assigned to me</span></div>`;
+    html += `<div class="nav-item ${filterAssignee==='Unassigned'?'active':''}" data-f="assignee" data-v="Unassigned"><span>Unassigned</span></div>`;
+  }
   html += `<div class="nav-label">Priority</div>`;
   PRIORITIES.forEach(p=> html += `<div class="nav-item ${filterPriority===p.key?'active':''}" data-f="priority" data-v="${p.key}"><span><span class="priority-dot" style="background:${p.color}"></span>${p.label}</span></div>`);
   html += `<div class="nav-label">Status</div>`;
@@ -924,9 +939,10 @@ async function renderReportsView(el){
   const periodLabel = reportPeriod==='daily' ? 'Daily' : 'Weekly';
   const rangeLabel = `${new Date(d.start).toLocaleDateString()} \u2013 ${new Date(d.end).toLocaleDateString()}`;
 
+  const isAdminReport = currentUser && currentUser.tier === 'admin';
   const tabs = [
     {key:'overview', label:'Overview'},
-    {key:'scorecard', label:'Staff scorecard'},
+    {key:'scorecard', label: isAdminReport ? 'Staff scorecard' : 'My progress'},
     {key:'raised', label:`Tickets raised (${d.ticketsRaised.length})`},
     {key:'resolved', label:`Tickets resolved (${d.ticketsResolved.length})`},
   ];
@@ -955,7 +971,7 @@ async function renderReportsView(el){
   } else if(reportTab==='scorecard'){
     body = `
     <div class="breakdown" style="padding:0;overflow:hidden;">
-      <h5 style="padding:16px 18px 0;">Staff scorecard \u2014 ${periodLabel.toLowerCase()}</h5>
+      <h5 style="padding:16px 18px 0;">${isAdminReport ? 'Staff scorecard' : 'Your progress'} \u2014 ${periodLabel.toLowerCase()}</h5>
       <table class="scorecard-table">
         <thead><tr>
           <th>Name</th><th>Team</th><th>Resolved</th><th>SLA met</th><th>Avg. resolution</th><th>Replies sent</th><th>KB entries</th><th>Current load</th>
@@ -1117,15 +1133,18 @@ document.getElementById('modalOverlay').onclick = (e)=>{ if(e.target.id==='modal
 document.getElementById('submitModalBtn').onclick = async ()=>{
   const subject = document.getElementById('f_subject').value.trim();
   const requester = document.getElementById('f_requester').value.trim();
-  if(!subject || !requester){
+  const email = document.getElementById('f_email').value.trim();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if(!subject || !requester || !emailOk){
     document.getElementById('f_subject').style.borderColor = subject?'var(--line)':'var(--critical)';
     document.getElementById('f_requester').style.borderColor = requester?'var(--line)':'var(--critical)';
+    document.getElementById('f_email').style.borderColor = emailOk?'var(--line)':'var(--critical)';
     return;
   }
   const body = {
     system: document.getElementById('f_system').value, module: document.getElementById('f_module').value,
     category: document.getElementById('f_category').value, subject, requester,
-    requesterEmail: document.getElementById('f_email').value.trim(), priority: document.getElementById('f_priority').value,
+    requesterEmail: email, priority: document.getElementById('f_priority').value,
     description: document.getElementById('f_description').value.trim(),
   };
   try{

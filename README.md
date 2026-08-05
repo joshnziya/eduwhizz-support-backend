@@ -103,23 +103,36 @@ back to the landing page from scratch. This is purely visual/navigational — th
 control is still enforced by the API (`requireAuth` / `requireTier('admin')`), not by which page
 someone happens to be looking at.
 
-### New-ticket email notifications (optional, never blocks anything)
+### Emails: customer confirmation + internal notifications (optional, never blocks anything)
 
-When a ticket is created — from the portal or logged by staff — the API sends a notification email
-to everyone active who has an email on file, saying who raised it (name, role, email if given),
-which system/module, and the description. This is **entirely separate from login** and never blocks
-or delays ticket creation: if it fails or isn't configured, the request still succeeds.
+Two separate emails go out when a ticket is created — from the portal or logged by staff:
 
-To actually receive these, two things need to be true:
-1. **The account needs an email on file** — set one when creating an account in `/admin.html`
-   (now optional there), or add one later via "Set email" next to any existing account.
-2. **SMTP needs to be configured** — set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (and usually
-   `SMTP_PORT`/`SMTP_FROM`) in your environment variables. Gmail (with an
-   [App Password](https://myaccount.google.com/apppasswords)), Resend, SendGrid, and Mailgun all
-   work the same way — host, port, username, password.
+1. **Confirmation to the requester** — sent to `requesterEmail` (now a required field), saying
+   their request was received, with the ticket reference. This is why email is mandatory on
+   submission now, not just a nice-to-have.
+2. **Internal notification to staff/admins** — sent to everyone active who has an email on file,
+   saying who raised it (name, role, email), which system/module, and the description.
 
-If SMTP isn't configured, notifications are printed to the server console/logs instead (visible in
-Render's "Logs" tab) — nothing breaks, you just won't get an actual email until it's set up.
+Both are **entirely separate from login** and never block or delay ticket creation — if sending
+fails or SMTP isn't configured, the ticket is still created successfully either way.
+
+**If notifications aren't arriving, check these in order — this is almost always the cause:**
+1. **Is SMTP actually configured?** Without `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` set in your
+   environment variables, nothing is ever emailed — both the confirmation and the internal
+   notification are printed to the server console/logs instead (visible in Render's "Logs" tab).
+   Search the logs for `[NOTIFY` to see what would have been sent.
+2. **For internal notifications specifically: does anyone have an email on file?** A freshly
+   seeded install has no staff emails set at all, so `listNotificationRecipients()` returns
+   nothing and the internal notification is skipped — the log will say
+   `No staff/admin accounts have an email on file`. Set emails via `/admin.html` → "Set email"
+   next to each account.
+3. **Check your SMTP provider's own restrictions** — Gmail blocks anything that isn't an
+   [App Password](https://myaccount.google.com/apppasswords) (not your normal Gmail password),
+   and providers like Resend/SendGrid may require a verified sending domain before they'll
+   actually deliver, even if the API call itself doesn't error.
+
+Any standard SMTP provider works the same way — host, port, username, password. See
+`.env.example` for the exact variable names.
 
 ### Where staff accounts get created
 
@@ -138,6 +151,24 @@ seeded ones long-term.
 
 Anyone who is deactivated is excluded from `/api/users/assignable`, so they stop showing up as an
 option when assigning tickets, without deleting their history.
+
+## 4.5 Who sees what (per-person access control)
+
+This is enforced **server-side**, not just hidden in the UI — the API itself refuses to return or
+modify data outside someone's scope, regardless of what a client asks for.
+
+- **Support/engineering accounts** only ever see tickets assigned to them, or unassigned ones
+  they could pick up. They cannot view, reply to, reassign, or escalate a ticket assigned to a
+  colleague — those requests get a `403`. Filtering the queue by another person's name returns an
+  empty list rather than an error, so it fails closed instead of leaking anything.
+- **Reports** follow the same rule: a non-admin's Scorecard tab shows only their own row, "Tickets
+  raised"/"Tickets resolved" only include tickets in their scope, and the workload breakdown on
+  Overview only shows their own count. Admins see everyone's, since they need the full picture for
+  oversight and the daily/weekly submission.
+- **Admin accounts** are unrestricted — full queue, full reports, can view/edit/assign any ticket.
+- The `+ Log request` assignee dropdown (for handing a ticket to a specific colleague) still lists
+  everyone, since assigning work to someone is a different action from browsing their existing
+  queue — a non-admin can still hand a ticket to Lucy even though they can't see Lucy's other work.
 
 ## 5. API reference
 
@@ -158,16 +189,16 @@ Base URL: `http://localhost:4000/api`
 ### Tickets
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/tickets` | public | create a ticket: `{ system, module, category, subject, description, requester, requesterEmail, requesterRole, priority, attachment? }`. `attachment` is `{ name, type, dataUrl }` — an optional image, base64 data URL, ~3MB max. |
-| GET | `/tickets` | staff | list/filter: `?system=&module=&assignee=&priority=&status=&sla=&search=` (attachment data omitted here for speed — use the detail endpoint) |
+| POST | `/tickets` | public | create a ticket: `{ system, module, category, subject, description, requester, requesterEmail, requesterRole, priority, attachment? }`. **`requesterEmail` is now required** — a confirmation email is sent to it, and it's also how the requester later looks up their ticket. `attachment` is `{ name, type, dataUrl }` — an optional image, base64 data URL, ~3MB max. |
+| GET | `/tickets` | staff | list/filter: `?system=&module=&assignee=&priority=&status=&sla=&search=`. **Non-admins are scoped server-side** to tickets assigned to them or unassigned, regardless of filters requested (attachment data omitted here for speed — use the detail endpoint). |
 | GET | `/tickets/lookup?email=` | public | a customer's own tickets, internal notes hidden |
-| GET | `/tickets/:id` | staff | full detail incl. internal notes and any attachment |
+| GET | `/tickets/:id` | staff | full detail incl. internal notes and any attachment. `403` if a non-admin requests a ticket outside their scope. |
 | GET | `/tickets/:id/lookup?email=` | public | detail if `email` matches the requester |
-| PATCH | `/tickets/:id` | staff | update `{ status, priority, assignee }` — team/SLA auto-managed |
-| POST | `/tickets/:id/escalate` | staff | moves ticket to Engineering, unassigns, status → escalated |
-| POST | `/tickets/:id/messages` | staff | `{ type: 'reply'|'note', body }` |
+| PATCH | `/tickets/:id` | staff | update `{ status, priority, assignee }` — team/SLA auto-managed. Scoped like GET. |
+| POST | `/tickets/:id/escalate` | staff | moves ticket to Engineering, unassigns, status → escalated. Scoped like GET. |
+| POST | `/tickets/:id/messages` | staff | `{ type: 'reply'|'note', body }`. Scoped like GET. |
 | POST | `/tickets/:id/messages/customer` | public | `{ email, body }` — must match requester email |
-| PATCH | `/tickets/:id/messages/:msgId` | staff | `{ kb: true|false }` — toggle "save to knowledge base" |
+| PATCH | `/tickets/:id/messages/:msgId` | staff | `{ kb: true|false }` — toggle "save to knowledge base". Scoped like GET. |
 
 ### Systems & incidents
 | Method | Path | Auth | Notes |

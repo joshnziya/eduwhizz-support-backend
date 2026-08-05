@@ -54,7 +54,10 @@ router.get('/', requireAuth, (req, res) => {
   ).length;
 
   // Per-staff scorecard: what each active support/engineering person actually did in this period.
-  const staff = listAssignableStaff();
+  // Non-admins only ever see their own row here \u2014 "each support team member should just view
+  // their own progress" \u2014 admins see everyone's, since they need the full picture.
+  const isAdmin = req.user.tier === 'admin';
+  const staff = isAdmin ? listAssignableStaff() : listAssignableStaff().filter((m) => m.name === req.user.name);
   const allThreadRows = db.prepare('SELECT tt.*, t.created_at AS ticket_created_at FROM ticket_thread tt JOIN tickets t ON t.id = tt.ticket_id').all();
   const scorecard = staff.map((m) => {
     const theirResolved = resolved.filter((t) => t.assignee === m.name);
@@ -83,6 +86,10 @@ router.get('/', requireAuth, (req, res) => {
     };
   });
 
+  // Same principle for the workload breakdown \u2014 a non-admin sees only their own count, not
+  // how much everyone else on the team currently has open.
+  const scopedByAssignee = isAdmin ? byAssignee : { [req.user.name]: byAssignee[req.user.name] || 0 };
+
   function ticketRow(t) {
     return {
       id: t.id,
@@ -103,6 +110,11 @@ router.get('/', requireAuth, (req, res) => {
     };
   }
 
+  // Ticket-level lists follow the same queue-visibility rule as GET /api/tickets: non-admins see
+  // only what's assigned to them, or unassigned tickets they could still pick up.
+  const visibleCreated = isAdmin ? created : created.filter((t) => t.assignee === req.user.name || t.assignee === 'Unassigned');
+  const visibleResolved = isAdmin ? resolved : resolved.filter((t) => t.assignee === req.user.name);
+
   res.json({
     period,
     start,
@@ -117,10 +129,10 @@ router.get('/', requireAuth, (req, res) => {
     downtimeMinutes: Math.round(downtimeMinutes),
     bySystem,
     byPriority,
-    byAssigneeOpenLoad: byAssignee,
+    byAssigneeOpenLoad: scopedByAssignee,
     scorecard,
-    ticketsRaised: created.sort((a, b) => b.created_at - a.created_at).map(ticketRow),
-    ticketsResolved: resolved.sort((a, b) => b.resolved_at - a.resolved_at).map(ticketRow),
+    ticketsRaised: visibleCreated.sort((a, b) => b.created_at - a.created_at).map(ticketRow),
+    ticketsResolved: visibleResolved.sort((a, b) => b.resolved_at - a.resolved_at).map(ticketRow),
   });
 });
 
